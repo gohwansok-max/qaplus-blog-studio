@@ -1,71 +1,64 @@
 # QA PLUS Blog Studio
 
-QA PLUS YouTube 대본을 Blogger용 실무 글로 변환하고 검토·발행하는 정적 웹앱입니다.
+QA PLUS 공개 YouTube 영상을 근거로 Blogger용 식품안전 실무 글을 만들고, 검토 후 임시저장 또는 발행하는 단일 HTML PWA입니다.
 
-## 주요 기능
+## 5단계 AI 파이프라인
 
-- YouTube 주소, 주제, 최종 승인 대본 입력
-- QA PLUS 현장 전문가 페르소나 기반 AI 글 생성
-- API 없이 사용할 수 있는 구조 초안 생성
-- SEO 제목, 검색 설명, 라벨, 키워드 편집
-- Blogger 안전 HTML 정리와 실제 글 미리보기
-- YouTube 영상 및 QA PLUS 무료자료 자동 연결
-- Google OAuth를 통한 Blogger 임시저장 또는 발행
-- YouTube 영상 ID 기준 중복 전송 방지
+1. **Gemini 대본 추출** — 공개 YouTube 영상의 음성과 화면을 분석해 타임스탬프 대본과 장면 메모를 만듭니다.
+2. **ChatGPT 1단계 분석** — `gpt-5.6-sol`이 근거, 검색 의도, 확인이 필요한 주장, 글 구성과 표 계획을 JSON으로 정리합니다.
+3. **Claude 1차 기본 글** — `claude-opus-5`가 분석 결과와 대본을 바탕으로 긴 글의 뼈대와 기본 설명을 씁니다.
+4. **Claude 2차 살붙이기** — 같은 Claude 모델이 사례, 실수, 체크리스트, HTML 표 1~2개, FAQ를 더해 6천·9천·1만2천 자 목표의 최종 글로 확장합니다. 목표의 90%에 못 미치면 같은 단계에서 자동 보강하고 다시 길이를 검사합니다.
+5. **OpenAI 이미지 생성** — CheapSub `/v1/images/generations`의 `gpt-image-2`로 기본 3장의 실사 B-roll 이미지를 만들고 본문에 삽입합니다.
 
-## 공식 연결
+글 길이 기본값은 **아주 풍성하게 9,000자**, 이미지 기본값은 **대표+본문 3장**입니다. 실패하면 완료된 단계 결과를 유지하고 **실패 단계부터 다시 실행**할 수 있습니다.
 
-- 블로그: https://qaplus-haccp.blogspot.com/
-- YouTube: https://youtube.com/@qaplus_haccp
-- 무료자료: https://drive.google.com/drive/folders/1tHqeagzD__Oqjc027TVJhcWQC0JkOIV6?usp=sharing
+## 처음 한 번 설정하기
 
-## 사용 방법
+### 1. Google Gemini API 키
 
-1. GitHub Pages로 배포된 앱에 접속합니다.
-2. 영상 주소, 핵심 주제, 최종 승인 대본을 입력합니다.
-3. `AI로 전문 글 생성` 또는 `API 없이 초안 만들기`를 선택합니다.
-4. 제목, 검색 설명, 라벨, 본문을 검토합니다.
-5. `발행 전 검사`를 실행합니다.
-6. Google Blogger 연결 후 기본값인 `임시저장`으로 전송합니다.
+- Google AI Studio에서 Gemini API 키를 발급합니다.
+- 앱의 **설정·검증 → Google Gemini API 키**에 입력합니다.
+- 기본 모델은 `gemini-3.6-flash`입니다.
+- YouTube URL 직접 입력은 공개 영상만 지원합니다. 비공개·일부공개 영상은 승인 대본을 직접 입력하세요.
 
-## AI 설정
+### 2. CheapSub API 키
 
-앱은 OpenAI 호환 Chat Completions API를 사용합니다. 기본 주소는
-`https://qa-plus-api.gohwansok.workers.dev/v1/chat/completions`이며,
-Cloudflare Worker가 GitHub Pages 모바일 브라우저의 CORS 오류를 막고 요청을 CheapSub로 전달합니다.
+- CheapSub에서 `csk_`로 시작하는 키를 발급하고 크레딧을 충전합니다.
+- 앱의 **CheapSub API 키**에 입력합니다.
+- 휴대폰 브라우저의 CORS 오류를 피하기 위해 기본 연결은 QA PLUS 전용 Cloudflare Worker `https://qa-plus-api.gohwansok.workers.dev`를 사용합니다. 앱에서 예전 CheapSub 직접 주소를 불러와도 중계 주소로 자동 변환합니다.
+  - ChatGPT 분석: `POST /v1/chat/completions`
+  - Claude 작성·확장: `POST /v1/messages`
+  - OpenAI 이미지: `POST /v1/images/generations`
+- 중계 서버는 요청 경로만 전달하며, API 키는 HTML 소스에 저장하지 않고 브라우저의 현재 탭에서 요청 헤더로만 보냅니다.
 
-실사 B-roll은 CheapSub 공식 Image Generations 경로인 `/v1/images/generations`와
-`gpt-image-2` 모델을 사용합니다.
-API 키는 소스 코드에 포함되지 않고 현재 브라우저 탭의 `sessionStorage`에만 임시 저장됩니다.
-공용 PC에서는 키를 입력하지 마세요.
+경제냠냠과 같은 브라우저 프로필에서 열면 **경제냠냠 설정 가져오기**로 CheapSub 키와 Google OAuth Client ID를 불러올 수 있습니다. Gemini 키는 별도로 입력해야 합니다.
 
-## Blogger OAuth 설정
+### 3. Google OAuth
 
-Google Cloud Console에서 웹 애플리케이션 OAuth Client ID를 만들고 다음을 설정해야 합니다.
+Google OAuth는 AI 글 생성이 아니라 QA PLUS 영상 목록 조회와 Blogger 임시저장·발행에 사용합니다.
 
-- 승인된 JavaScript 원본: GitHub Pages 배포 주소
-- OAuth 동의 화면의 Blogger API 범위: `https://www.googleapis.com/auth/blogger`
-- Blogger API 활성화
-
-OAuth Access Token은 메모리에만 유지되며 새로고침하면 사라집니다.
-기본 발행 모드는 안전을 위해 항상 `임시저장`입니다.
+- 승인된 JavaScript 원본에 GitHub Pages 배포 주소를 등록합니다.
+- Blogger API와 YouTube Data API v3를 활성화합니다.
+- 앱에서 **Google·YouTube 권한 연결**을 누릅니다.
+- 기본 발행 모드는 안전을 위해 항상 **임시저장**입니다.
 
 ## 보안 원칙
 
-- API 키, Google Client Secret, OAuth Token을 저장소에 커밋하지 않습니다.
-- 실제 회사명, 제품명, 사람, 연락처, 인증번호가 포함된 대본은 익명화한 뒤 외부 AI에 전송합니다.
-- 생성 결과는 법적·인증 판단을 대신하지 않으며 반드시 사람이 최종 검토합니다.
+- API 키와 OAuth 토큰을 HTML 소스에 넣지 않습니다.
+- API 키는 현재 탭의 `sessionStorage`에만 저장되고, Google OAuth 토큰은 메모리에만 유지됩니다.
+- 공용 PC에서는 키를 입력하지 마세요.
+- 실제 회사명, 제품명, 개인정보가 포함된 대본은 익명화한 뒤 전송하세요.
 
 ## 로컬 실행
 
-별도 빌드 과정이 없는 단일 HTML 앱입니다.
+별도 빌드 과정이 없습니다.
 
-```bash
-python -m http.server 4173
+```powershell
+py -m http.server 4173
 ```
 
-그다음 `http://localhost:4173/`에 접속합니다.
+그다음 `http://localhost:4173/`을 엽니다.
 
 ## 배포
 
-GitHub Pages에서 `main` 브랜치의 `/ (root)`를 소스로 선택하면 됩니다.
+GitHub Pages에서 `main` 브랜치의 `/ (root)`를 배포 소스로 선택합니다.

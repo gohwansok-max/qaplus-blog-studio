@@ -13,7 +13,7 @@
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
   <meta name="description" content="QA PLUS 유튜브 대본을 Blogger 실무 콘텐츠로 변환하고 검토·발행하는 자동화 스튜디오">
   <meta name="referrer" content="strict-origin-when-cross-origin">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' 'unsafe-inline' https://accounts.google.com; connect-src https://qa-plus-api.gohwansok.workers.dev https://api.cheapsub.im https://www.googleapis.com; frame-src https://accounts.google.com https://www.youtube-nocookie.com; img-src 'self' data: https:">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' 'unsafe-inline' https://accounts.google.com; connect-src https://qa-plus-api.gohwansok.workers.dev https://api.cheapsub.im https://generativelanguage.googleapis.com https://www.googleapis.com; frame-src https://accounts.google.com https://www.youtube-nocookie.com; img-src 'self' data: https:">
   <title>QA PLUS Blog Studio</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -82,7 +82,7 @@
     .status-dot{width:10px;height:10px;flex:0 0 auto;border-radius:50%;background:#8ca1ad;box-shadow:0 0 0 5px rgba(255,255,255,.06)}
     .status-dot.ok{background:var(--mint)}
     .progress-wrap{padding:23px 0 4px;background:#fff;border-bottom:1px solid var(--line)}
-    .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:0;padding:0 0 20px;list-style:none}
+    .steps{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;margin:0;padding:0 0 20px;list-style:none}
     .step{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--line);border-radius:13px;background:#f8fafb;color:var(--muted);font-size:.82rem;font-weight:800}
     .step b{display:grid;width:28px;height:28px;flex:0 0 auto;place-items:center;border-radius:9px;background:#e9eff2;color:#536775}
     .step.active{border-color:#a8ded5;background:var(--mint-soft);color:var(--teal)}
@@ -207,6 +207,23 @@
     .broll-result{display:none;margin-top:12px;padding:11px;border-radius:10px;background:#fff;color:var(--muted);font-size:.74rem}
     .broll-result.show{display:block}
     .broll-result img{display:block;width:100%;max-width:520px;margin-top:10px;border-radius:12px}
+    .pipeline-panel{display:grid;gap:13px;margin-top:18px;padding:17px;border:1px solid #b9e3da;border-radius:15px;background:#f1faf8}
+    .pipeline-panel[hidden]{display:none}
+    .pipeline-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+    .pipeline-head h3{margin:0;color:var(--navy);font-size:.95rem}
+    .pipeline-head p{margin:4px 0 0;color:var(--muted);font-size:.72rem}
+    .pipeline-list{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+    .pipeline-item{display:flex;align-items:center;gap:10px;padding:10px 11px;border:1px solid #cfe7e1;border-radius:11px;background:#fff;color:var(--muted);font-size:.76rem;font-weight:800}
+    .pipeline-item b{display:grid;width:25px;height:25px;flex:0 0 auto;place-items:center;border-radius:8px;background:#e9eff2;color:#536775}
+    .pipeline-item span{margin-left:auto;font-size:.68rem}
+    .pipeline-item.running{border-color:#7fcfc0;background:#edfbf7;color:var(--teal)}
+    .pipeline-item.running b{background:var(--teal);color:#fff}
+    .pipeline-item.done{border-color:#a6dec1;color:var(--success)}
+    .pipeline-item.done b{background:#12a566;color:#fff}
+    .pipeline-item.failed{border-color:#f4b2b2;background:#fff4f4;color:var(--danger)}
+    .pipeline-item.failed b{background:var(--danger);color:#fff}
+    .pipeline-output{padding:0 12px 12px}
+    .pipeline-output pre{max-height:240px;overflow:auto;margin:8px 0 0;padding:11px;border-radius:9px;background:#102a3d;color:#e7f2f4;font:12px/1.6 Consolas,monospace;white-space:pre-wrap;word-break:break-word}
     .preview-frame{width:100%;min-height:560px;border:0;border-radius:0 0 var(--radius) var(--radius);background:#fff}
     .html-editor{min-height:520px;border:0;border-radius:0 0 var(--radius) var(--radius);font-family:Consolas,monospace;font-size:.78rem;white-space:pre}
     .publish-box{display:grid;gap:14px}
@@ -285,10 +302,11 @@
   <div id="workflowProgress" class="progress-wrap" aria-label="작업 단계">
     <div class="container">
       <ol class="steps">
-        <li class="step active" data-step="1"><b>1</b>영상·대본 입력</li>
-        <li class="step" data-step="2"><b>2</b>콘텐츠 생성</li>
-        <li class="step" data-step="3"><b>3</b>검토·수정</li>
-        <li class="step" data-step="4"><b>4</b>Blogger 발행</li>
+        <li class="step active" data-step="1"><b>1</b>Gemini 대본</li>
+        <li class="step" data-step="2"><b>2</b>ChatGPT 분석</li>
+        <li class="step" data-step="3"><b>3</b>Claude 1차 글</li>
+        <li class="step" data-step="4"><b>4</b>Claude 2차 확장</li>
+        <li class="step" data-step="5"><b>5</b>OpenAI 이미지</li>
       </ol>
     </div>
   </div>
@@ -310,8 +328,8 @@
           <article class="settings-card">
             <div class="settings-section-head">
               <div>
-                <h3>1. CheapSub AI</h3>
-                <p>글 작성과 실사 B-roll 생성에 공통으로 사용하는 API 설정입니다.</p>
+                <h3>1. 5단계 AI 파이프라인</h3>
+                <p>Gemini 대본 추출과 CheapSub의 ChatGPT·Claude·OpenAI 이미지를 순서대로 사용합니다.</p>
               </div>
               <span id="verifyAiStatus" class="badge">검증 전</span>
             </div>
@@ -322,19 +340,36 @@
                 <p class="hint">휴대폰 브라우저의 CORS 오류를 막는 QA PLUS 전용 Cloudflare Worker가 자동 적용됩니다.</p>
               </div>
               <div class="field">
-                <label for="aiModel">글 생성 모델</label>
+                <label for="aiModel">ChatGPT 분석 모델</label>
                 <input id="aiModel" value="gpt-5.6-sol" autocomplete="off" spellcheck="false">
+              </div>
+              <div class="field">
+                <label for="claudeModel">Claude 작성·확장 모델</label>
+                <input id="claudeModel" value="claude-opus-5" autocomplete="off" spellcheck="false">
+              </div>
+              <div class="field">
+                <label for="imageModel">OpenAI 이미지 모델</label>
+                <input id="imageModel" value="gpt-image-2" autocomplete="off" spellcheck="false">
               </div>
               <div class="field">
                 <label for="aiKey">CheapSub API 키</label>
                 <input id="aiKey" name="qaplus_cheapsub_token" type="text" placeholder="csk_... (현재 탭에서만 사용)" autocomplete="off" autocapitalize="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" style="-webkit-text-security:disc">
               </div>
-              <p class="security-note">키는 소스 코드나 주소에 포함하지 않고 현재 브라우저 탭의 sessionStorage에만 저장합니다.</p>
+              <div class="field">
+                <label for="geminiModel">Gemini 대본 추출 모델</label>
+                <input id="geminiModel" value="gemini-3.6-flash" autocomplete="off" spellcheck="false">
+              </div>
+              <div class="field">
+                <label for="geminiKey">Google Gemini API 키</label>
+                <input id="geminiKey" name="qaplus_gemini_token" type="text" placeholder="AI Studio API 키 (현재 탭에서만 사용)" autocomplete="off" autocapitalize="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" style="-webkit-text-security:disc">
+              </div>
+              <p class="security-note">두 키 모두 소스 코드나 주소에 포함하지 않고 현재 브라우저 탭의 sessionStorage에만 저장합니다. 공개 YouTube 영상은 Gemini가 음성·화면을 함께 분석하며, 비공개 영상은 직접 입력한 대본을 사용합니다.</p>
             </div>
             <div class="settings-actions">
               <button id="importEconnyam" class="btn btn-mint btn-small" type="button">경제냠냠 설정 가져오기</button>
               <button id="saveAllSettings" class="btn btn-secondary btn-small" type="button">설정 저장</button>
-              <button id="testCheapSub" class="btn btn-primary btn-small" type="button">CheapSub만 검사</button>
+              <button id="testCheapSub" class="btn btn-primary btn-small" type="button">CheapSub 연결 검사</button>
+              <button id="testGemini" class="btn btn-secondary btn-small" type="button">Gemini 연결 검사</button>
             </div>
             <div id="aiActionFeedback" class="action-feedback" role="status" aria-live="polite"></div>
           </article>
@@ -343,7 +378,7 @@
             <div class="settings-section-head">
               <div>
                 <h3>2. Google·채널</h3>
-                <p>Blogger 임시저장, QA PLUS 영상 목록과 소유 자막을 연결합니다.</p>
+                <p>Blogger 임시저장과 QA PLUS 공개 영상 목록을 연결합니다. 대본은 Gemini가 추출합니다.</p>
               </div>
               <span id="verifyGoogleStatus" class="badge">연결 전</span>
             </div>
@@ -380,6 +415,10 @@
               <div class="verify-row">
                 <div class="verify-copy"><strong>CheapSub 글 생성</strong><small>최소 응답 1회로 키·모델·CORS 확인</small></div>
                 <span id="verifyAiDetail" class="badge">대기</span>
+              </div>
+              <div class="verify-row">
+                <div class="verify-copy"><strong>Google Gemini 대본 추출</strong><small>API 키와 영상 이해 모델 접근 확인</small></div>
+                <span id="verifyGeminiStatus" class="badge">대기</span>
               </div>
               <div class="verify-row">
                 <div class="verify-copy"><strong>Google OAuth</strong><small>Blogger·YouTube 권한 토큰 확인</small></div>
@@ -457,9 +496,18 @@
                     <option>무료자료</option>
                   </select>
                 </div>
+                <div class="field">
+                  <label for="targetLength">최종 글 길이</label>
+                  <select id="targetLength">
+                    <option value="6000">넉넉하게 · 6,000자</option>
+                    <option value="9000" selected>아주 풍성하게 · 9,000자 (권장)</option>
+                    <option value="12000">최대 · 12,000자</option>
+                  </select>
+                  <p class="help">Claude 1차 기본 글을 2차에서 사례·표·FAQ로 확장하고 목표 길이를 검사합니다.</p>
+                </div>
                 <div class="field full">
-                  <label class="required" for="transcript">최종 승인 대본 또는 원문</label>
-                  <textarea id="transcript" placeholder="영상 대본, 교육자료 원문, 현장 메모를 붙여 넣으세요. 실제 회사명·제품명·개인정보는 제거해 주세요."></textarea>
+                  <label for="transcript">보조 대본 또는 원문 (선택)</label>
+                  <textarea id="transcript" placeholder="공개 YouTube 영상은 Gemini가 자동 추출합니다. 비공개 영상이거나 보강할 내용이 있으면 승인 대본·원문을 붙여 넣으세요. 개인정보는 제거해 주세요."></textarea>
                   <div id="charCount" class="char-count">0자</div>
                 </div>
                 <div class="field full">
@@ -469,10 +517,32 @@
                 </div>
               </div>
               <div class="toolbar">
-                <button id="generateAi" class="btn btn-primary" type="button">AI로 전문 글 생성</button>
+                <button id="generateAi" class="btn btn-primary" type="button">5단계 자동 파이프라인 실행</button>
+                <button id="retryPipeline" class="btn btn-mint" type="button" hidden>실패 단계부터 다시 실행</button>
                 <button id="generateLocal" class="btn btn-secondary" type="button">API 없이 초안 만들기</button>
                 <button id="clearSource" class="btn btn-secondary" type="button">입력 지우기</button>
               </div>
+              <section id="pipelinePanel" class="pipeline-panel" aria-labelledby="pipelineTitle" hidden>
+                <div class="pipeline-head">
+                  <div><h3 id="pipelineTitle">QA PLUS 5단계 AI 파이프라인</h3><p>완료된 단계 결과는 재시도할 때 재사용해 중복 호출을 줄입니다.</p></div>
+                  <span id="pipelineOverall" class="badge">대기</span>
+                </div>
+                <ol class="pipeline-list">
+                  <li class="pipeline-item" data-pipeline-step="1"><b>1</b>Gemini 영상 대본·장면 추출<span>대기</span></li>
+                  <li class="pipeline-item" data-pipeline-step="2"><b>2</b>ChatGPT 1단계 분석<span>대기</span></li>
+                  <li class="pipeline-item" data-pipeline-step="3"><b>3</b>Claude 1차 기본 글 작성<span>대기</span></li>
+                  <li class="pipeline-item" data-pipeline-step="4"><b>4</b>Claude 2차 살붙이기·표·FAQ<span>대기</span></li>
+                  <li class="pipeline-item" data-pipeline-step="5"><b>5</b>OpenAI 이미지 생성·삽입<span>대기</span></li>
+                </ol>
+                <details id="pipelineOutputDetails">
+                  <summary>중간 결과 확인</summary>
+                  <div class="pipeline-output">
+                    <strong>Gemini 대본</strong><pre id="pipelineTranscript">아직 결과가 없습니다.</pre>
+                    <strong>ChatGPT 분석</strong><pre id="pipelineAnalysis">아직 결과가 없습니다.</pre>
+                    <strong>Claude 초안</strong><pre id="pipelineDraft">아직 결과가 없습니다.</pre>
+                  </div>
+                </details>
+              </section>
             </div>
           </section>
 
@@ -516,6 +586,7 @@
                 </div>
                 <div class="seo-grid" style="margin-top:16px">
                   <div class="seo-box"><strong>영상 연결</strong><span id="seoVideo">연결된 영상 없음</span></div>
+                  <div class="seo-box"><strong>최종 본문 길이</strong><span id="postLength">생성 전</span></div>
                   <div class="seo-box"><strong>무료자료 CTA</strong><span>QA PLUS Google Drive 연결</span></div>
                 </div>
                 <section class="broll-panel" aria-labelledby="brollTitle">
@@ -530,7 +601,7 @@
                   <div class="toolbar">
                     <select id="brollCount" aria-label="생성할 이미지 수" style="width:auto;min-width:128px">
                       <option value="1">대표 1장</option>
-                      <option value="3">대표+본문 3장</option>
+                      <option value="3" selected>대표+본문 3장 (권장)</option>
                     </select>
                     <button id="generateBroll" class="btn btn-mint btn-small" type="button">실사 이미지 생성·삽입</button>
                     <button id="copyBroll" class="btn btn-secondary btn-small" type="button">B-roll 프롬프트 복사</button>
@@ -619,7 +690,6 @@
     const ECONNYAM_STUDIO_KEY = "econnyam_settings_v2";
     const CHEAPSUB_PROXY_ORIGIN = "https://qa-plus-api.gohwansok.workers.dev";
     const DEFAULT_AI_ENDPOINT = `${CHEAPSUB_PROXY_ORIGIN}/v1/chat/completions`;
-    const BROLL_IMAGE_MODEL = "gpt-image-2";
     const GOOGLE_SCOPES = [
       "https://www.googleapis.com/auth/blogger",
       "https://www.googleapis.com/auth/youtube.readonly",
@@ -668,32 +738,35 @@
       busy: false,
       installPrompt:null,
       lastAiError:"",
-      verification:{settings:false,ai:false,google:false,blogger:false,youtube:false,links:true,checking:false}
+      pipeline:{transcript:"",analysis:null,draft:null,expanded:null,images:[],failedStep:0,running:false,inputFingerprint:"",warning:""},
+      verification:{settings:false,ai:false,gemini:false,google:false,blogger:false,youtube:false,links:true,checking:false}
     };
 
     const $ = (id) => document.getElementById(id);
     const els = {
-      notice:$("notice"), videoUrl:$("videoUrl"), topic:$("topic"), category:$("category"),
+      notice:$("notice"), videoUrl:$("videoUrl"), topic:$("topic"), category:$("category"), targetLength:$("targetLength"),
       transcript:$("transcript"), sources:$("sources"), charCount:$("charCount"),
       generateAi:$("generateAi"), generateLocal:$("generateLocal"), clearSource:$("clearSource"),
       resultEmpty:$("resultEmpty"), resultEditor:$("resultEditor"), resultBadge:$("resultBadge"),
       postTitle:$("postTitle"), metaDescription:$("metaDescription"), metaCount:$("metaCount"),
       labels:$("labels"), keywords:$("keywords"), previewFrame:$("previewFrame"),
       htmlEditor:$("htmlEditor"), aiEndpoint:$("aiEndpoint"), aiModel:$("aiModel"), aiKey:$("aiKey"),
+      claudeModel:$("claudeModel"), imageModel:$("imageModel"), geminiModel:$("geminiModel"), geminiKey:$("geminiKey"),
       aiStatus:$("aiStatus"), googleClientId:$("googleClientId"), googleStatus:$("googleStatus"),
       youtubeStatus:$("youtubeStatus"), loadYoutube:$("loadYoutube"), channelSummary:$("channelSummary"), videoList:$("videoList"),
       brollGrid:$("brollGrid"), brollStatus:$("brollStatus"), brollResult:$("brollResult"), brollCount:$("brollCount"),
       publishBlogger:$("publishBlogger"), publishLog:$("publishLog"), videoBadge:$("videoBadge"),
-      seoVideo:$("seoVideo"), settingsView:$("settingsView"), automationView:$("automationView"),
+      seoVideo:$("seoVideo"), postLength:$("postLength"), settingsView:$("settingsView"), automationView:$("automationView"),
       workflowProgress:$("workflowProgress"), settingsOverall:$("settingsOverall"),
       verifySettingsStatus:$("verifySettingsStatus"), verifyAiStatus:$("verifyAiStatus"),
-      verifyAiDetail:$("verifyAiDetail"), verifyGoogleStatus:$("verifyGoogleStatus"),
+      verifyAiDetail:$("verifyAiDetail"), verifyGeminiStatus:$("verifyGeminiStatus"), verifyGoogleStatus:$("verifyGoogleStatus"),
       verifyGoogleDetail:$("verifyGoogleDetail"), verifyBloggerStatus:$("verifyBloggerStatus"),
       verifyYoutubeStatus:$("verifyYoutubeStatus"), verifyLinksStatus:$("verifyLinksStatus"),
       aiActionFeedback:$("aiActionFeedback"), googleActionFeedback:$("googleActionFeedback"),
       verificationMessage:$("verificationMessage"), verificationBar:$("verificationBar"),
-      verificationStep:$("verificationStep"), verifyAllConnections:$("verifyAllConnections"),
-      pwaInstall:$("pwaInstall"), pwaRefresh:$("pwaRefresh")
+      verificationStep:$("verificationStep"), verifyAllConnections:$("verifyAllConnections"), pwaInstall:$("pwaInstall"), pwaRefresh:$("pwaRefresh"),
+      pipelinePanel:$("pipelinePanel"), pipelineOverall:$("pipelineOverall"), pipelineTranscript:$("pipelineTranscript"),
+      pipelineAnalysis:$("pipelineAnalysis"), pipelineDraft:$("pipelineDraft"), retryPipeline:$("retryPipeline")
     };
 
     async function refreshPwaApp() {
@@ -784,6 +857,7 @@
       const targets = {
         settings:els.verifySettingsStatus,
         ai:els.verifyAiDetail,
+        gemini:els.verifyGeminiStatus,
         google:els.verifyGoogleDetail,
         blogger:els.verifyBloggerStatus,
         youtube:els.verifyYoutubeStatus,
@@ -797,7 +871,7 @@
     }
 
     function updateOverallReadiness() {
-      const ready = state.verification.settings && state.verification.ai && state.verification.google
+      const ready = state.verification.settings && state.verification.ai && state.verification.gemini && state.verification.google
         && state.verification.blogger && state.verification.youtube && state.verification.links;
       setBadge(els.settingsOverall,ready ? "전체 준비 완료" : (state.verification.checking ? "검증 중" : "검증 필요"),ready ? "ok" : "warn");
       els.verificationMessage.textContent = ready
@@ -810,10 +884,11 @@
 
     function refreshVerificationSummary() {
       const settings = getSettings();
-      const settingsReady = Boolean(settings.aiKey && settings.clientId && validHttpUrl(settings.endpoint) && settings.model);
+      const settingsReady = Boolean(settings.aiKey && settings.geminiKey && settings.clientId && validHttpUrl(settings.endpoint) && settings.model && settings.claudeModel && settings.imageModel && settings.geminiModel);
       setVerifyStatus("settings",settingsReady ? "필수값 입력됨" : "필수값 확인",settingsReady ? "ok" : "warn");
       setVerifyStatus("links","등록됨","ok");
       if (settings.aiKey && !state.verification.ai) setVerifyStatus("ai","검증 필요","warn");
+      if (settings.geminiKey && !state.verification.gemini) setVerifyStatus("gemini","검증 필요","warn");
       if (settings.clientId && !state.googleToken) setVerifyStatus("google","권한 연결 필요","warn");
       return settingsReady;
     }
@@ -826,9 +901,220 @@
 
     function setBusy(busy, label = "생성 중...") {
       state.busy = busy;
-      [els.generateAi, els.generateLocal].forEach((button) => button.disabled = busy);
-      els.generateAi.innerHTML = busy ? `<span class="spinner"></span>${escapeHtml(label)}` : "AI로 전문 글 생성";
+      [els.generateAi, els.generateLocal, els.retryPipeline].forEach((button) => button.disabled = busy);
+      els.generateAi.innerHTML = busy ? `<span class="spinner"></span>${escapeHtml(label)}` : "5단계 자동 파이프라인 실행";
     }
+
+    function setPipelineStage(step, status, detail = "") {
+      const item = document.querySelector('[data-pipeline-step="' + step + '"]');
+      if (!item) return;
+      item.classList.remove("running","done","failed");
+      if (status) item.classList.add(status);
+      const label = item.querySelector("span");
+      label.textContent = detail || ({running:"진행 중",done:"완료",failed:"실패"}[status] || "대기");
+      if (status === "running") setStep(step);
+    };
+
+    function resetPipelineUi() {
+      els.pipelinePanel.hidden = false;
+      document.querySelectorAll("[data-pipeline-step]").forEach((item) => {
+        item.classList.remove("running","done","failed");
+        item.querySelector("span").textContent = "대기";
+      });
+      setBadge(els.pipelineOverall,"준비","warn");
+      els.pipelineTranscript.textContent = "아직 결과가 없습니다.";
+      els.pipelineAnalysis.textContent = "아직 결과가 없습니다.";
+      els.pipelineDraft.textContent = "아직 결과가 없습니다.";
+      els.retryPipeline.hidden = true;
+    };
+
+    function pipelineFingerprint(input) {
+      return JSON.stringify([input.videoUrl,input.topic,input.category,input.targetChars,input.transcript,input.sources]);
+    };
+
+    function clearPipelineState(input) {
+      state.pipeline = {transcript:"",analysis:null,draft:null,expanded:null,images:[],failedStep:0,running:false,inputFingerprint:pipelineFingerprint(input),warning:""};
+      resetPipelineUi();
+      setStep(1);
+    };
+
+    function updatePipelineOutputs() {
+      if (state.pipeline.transcript) els.pipelineTranscript.textContent = state.pipeline.transcript.slice(0,30000);
+      if (state.pipeline.analysis) els.pipelineAnalysis.textContent = JSON.stringify(state.pipeline.analysis,null,2).slice(0,30000);
+      if (state.pipeline.draft) els.pipelineDraft.textContent = JSON.stringify({title:state.pipeline.draft.title,description:state.pipeline.draft.description,labels:state.pipeline.draft.labels,keywords:state.pipeline.draft.keywords,html:state.pipeline.draft.html},null,2).slice(0,30000);
+    };
+
+    function cheapSubEndpoint(chatEndpoint, path) {
+      const url = new URL(chatEndpoint);
+      const match = url.pathname.match(/^(.*\/v1)(?:\/.*)?$/i);
+      const basePath = match ? match[1] : url.pathname.replace(/\/+$/,"") + "/v1";
+      url.pathname = basePath + "/" + path.replace(/^\/+/,"");
+      url.search = "";
+      url.hash = "";
+      return url.toString();
+    };
+
+    async function callOpenAiChat(settings, messages, maxTokens = 8000) {
+      const response = await fetch(cheapSubEndpoint(settings.endpoint,"chat/completions"),{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer " + settings.aiKey},body:JSON.stringify({model:settings.model,messages,max_tokens:maxTokens})});
+      const raw = await response.text();
+      if (!response.ok) throw new Error("ChatGPT 요청 실패 (" + response.status + "): " + raw.slice(0,300));
+      let data;
+      try { data = JSON.parse(raw); } catch (_) { throw new Error("ChatGPT 응답이 JSON 형식이 아닙니다: " + raw.slice(0,220)); }
+      const content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+      if (!content) throw new Error("ChatGPT 응답 본문이 비어 있습니다.");
+      return content;
+    };
+
+    async function callClaude(settings, prompt, maxTokens = 12000) {
+      const response = await fetch(cheapSubEndpoint(settings.endpoint,"messages"),{method:"POST",headers:{"Content-Type":"application/json","x-api-key":settings.aiKey,"anthropic-version":"2023-06-01"},body:JSON.stringify({model:settings.claudeModel,max_tokens:maxTokens,messages:[{role:"user",content:prompt}]})});
+      const raw = await response.text();
+      if (!response.ok) throw new Error("Claude 요청 실패 (" + response.status + "): " + raw.slice(0,300));
+      let data;
+      try { data = JSON.parse(raw); } catch (_) { throw new Error("Claude 응답이 JSON 형식이 아닙니다: " + raw.slice(0,220)); }
+      const content = (data.content || []).filter((item) => item && item.type === "text").map((item) => item.text).join("\n").trim();
+      if (!content) throw new Error("Claude 응답 본문이 비어 있습니다.");
+      return content;
+    };
+
+    function collectGeminiText(value, output = []) {
+      if (!value) return output;
+      if (Array.isArray(value)) {
+        value.forEach((item) => collectGeminiText(item,output));
+        return output;
+      }
+      if (typeof value === "object") {
+        Object.entries(value).forEach(([key,item]) => {
+          if ((key === "text" || key === "output_text") && typeof item === "string") output.push(item);
+          else collectGeminiText(item,output);
+        });
+      }
+      return output;
+    };
+
+    async function extractTranscriptWithGemini(input, settings) {
+      const manual = input.transcript.trim();
+      if (!input.videoUrl) return manual;
+      if (!settings.geminiKey) {
+        if (manual.length >= 120) {
+          state.pipeline.warning = "Gemini 키가 없어 사용자가 입력한 보조 대본으로 1단계를 완료했습니다.";
+          return "[사용자 승인 대본]\n" + manual;
+        }
+        throw new Error("1단계 실행에 Google Gemini API 키가 필요합니다. 설정·검증에서 키를 입력해 주세요.");
+      }
+      const prompt = [
+        "이 공개 YouTube 영상을 한국어 블로그 제작용 근거 대본으로 정확히 추출하세요.",
+        "음성 발화는 의미를 바꾸지 말고 자연스러운 문장으로 정리하고, 주요 구간마다 [MM:SS] 타임스탬프를 붙이세요.",
+        "화면에서 확인되는 HACCP·식품안전 관련 표, 절차, 장비, 체크리스트는 [화면 관찰]로 구분하세요.",
+        "들리지 않거나 확인할 수 없는 내용은 [불명확]으로 표시하고 추측하지 마세요.",
+        "영상에 없는 법령 번호, 수치, 회사명, 제품명은 절대 만들지 마세요.",
+        "출력은 대본과 화면 관찰 메모만 포함하고 설명이나 인사말은 제외하세요."
+      ].join("\n");
+      let response;
+      try {
+        response = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions",{method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":settings.geminiKey},body:JSON.stringify({model:settings.geminiModel,input:[{type:"video",uri:input.videoUrl},{type:"text",text:prompt}]})});
+      } catch (error) {
+        if (manual.length >= 120) {
+          state.pipeline.warning = "Gemini 네트워크 오류로 사용자가 입력한 보조 대본을 사용했습니다: " + error.message;
+          return "[사용자 승인 대본]\n" + manual;
+        }
+        throw error;
+      }
+      const raw = await response.text();
+      if (!response.ok) {
+        if (manual.length >= 120) {
+          state.pipeline.warning = "Gemini 처리 실패로 사용자가 입력한 보조 대본을 사용했습니다. HTTP " + response.status;
+          return "[사용자 승인 대본]\n" + manual;
+        }
+        throw new Error("Gemini 영상 대본 추출 실패 (" + response.status + "): " + raw.slice(0,300));
+      }
+      let data;
+      try { data = JSON.parse(raw); } catch (_) { throw new Error("Gemini 응답을 읽지 못했습니다: " + raw.slice(0,220)); }
+      const extracted = [...new Set(collectGeminiText(data).map((item) => item.trim()).filter(Boolean))].join("\n\n").trim();
+      if (extracted.length < 120) throw new Error("Gemini가 충분한 대본을 반환하지 않았습니다. 공개 영상인지 확인하거나 보조 대본을 입력해 주세요.");
+      return extracted + (manual.length >= 120 ? "\n\n[사용자 승인 보조 원문]\n" + manual : "");
+    };
+
+    function parseLooseJson(content, label) {
+      const cleaned = String(content).trim().replace(/^```(?:json)?/i,"").replace(/```$/,"").trim();
+      const start = cleaned.indexOf("{");
+      const end = cleaned.lastIndexOf("}");
+      if (start < 0 || end <= start) throw new Error(label + " 응답에서 JSON 결과를 찾지 못했습니다.");
+      try { return JSON.parse(cleaned.slice(start,end + 1)); }
+      catch (_) { throw new Error(label + " JSON 응답을 해석하지 못했습니다."); }
+    };
+
+    function buildAnalysisPrompt(input, transcript) {
+      return [
+        "당신은 QA PLUS의 식품안전 콘텐츠 기획자입니다. 아래 영상 근거를 1단계 분석하세요.",
+        "대본에 없는 사실, 법령 번호, 수치, 의무사항은 만들지 마세요.",
+        "주제: " + input.topic,
+        "분야: " + input.category,
+        "영상: " + (input.videoUrl || "없음"),
+        "공식 출처: " + (input.sources.join(" | ") || "제공되지 않음"),
+        "[Gemini 근거 대본]\n" + transcript.slice(0,60000),
+        "Markdown 없이 다음 키를 가진 JSON만 반환하세요:",
+        '{"evidenceSummary":"근거 요약","targetReader":"독자","searchIntent":"검색 의도","keyFacts":["확인된 사실"],"claimsNeedingVerification":["추가 확인 항목"],"seoKeywords":["키워드"],"outline":["글 순서"],"tablePlan":["근거 안에서 만들 표"],"imageDirections":["필요 장면"]}'
+      ].join("\n\n");
+    };
+
+    function buildClaudeDraftPrompt(input, transcript, analysis) {
+      const draftTarget = Math.max(3000,Math.round(input.targetChars * 0.55));
+      return [
+        "당신은 20년 경력의 QA PLUS 식품안전 편집장입니다. Gemini 대본과 ChatGPT 분석만 근거로 1차 기본 글을 작성하세요.",
+        "이 호출은 1차 기본 글입니다. 최종 목표 " + input.targetChars.toLocaleString("ko-KR") + "자 중 약 " + draftTarget.toLocaleString("ko-KR") + "자 분량의 단단한 뼈대와 설명을 만드세요.",
+        "짧은 요약문으로 끝내지 말고 서론, 핵심 개념, 중요성, 현장 적용 순서, 실무 예시, 흔한 실수, 체크리스트, 정리까지 모든 섹션의 기본 내용을 작성하세요.",
+        "사실 확인이 필요한 항목은 단정하지 말고 확인 필요로 표시하세요. 임의 링크·법령 번호·수치·회사명은 만들지 마세요.",
+        "주제: " + input.topic + " / 분야: " + input.category,
+        "공식 출처: " + (input.sources.join("\n") || "제공되지 않음"),
+        "영상 주소: " + (input.videoUrl || "없음"),
+        "[ChatGPT 분석]\n" + JSON.stringify(analysis),
+        "[Gemini 근거 대본]\n" + transcript.slice(0,50000),
+        "HTML은 h2,h3,p,ul,ol,blockquote,strong,a 중심으로 작성하고 script/style과 이미지는 넣지 마세요.",
+        "영상 ID가 있으면 youtube-nocookie.com 반응형 iframe을 포함하고, 무료자료 CTA는 " + DRIVE_URL + " 로 연결하세요.",
+        "마지막에 일반 실무 참고용이며 최신 기준을 확인하라는 면책 문구를 넣으세요.",
+        "Markdown 코드블록 없이 다음 JSON만 반환하세요:",
+        '{"title":"검색 제목","description":"150자 이내 설명","labels":["분야"],"keywords":["키워드"],"html":"Blogger 1차 기본 글 HTML"}'
+      ].join("\n\n");
+    };
+
+    function buildClaudeExpansionPrompt(input, transcript, analysis, draft) {
+      const minimum = Math.ceil(input.targetChars * 0.9);
+      return [
+        "당신은 QA PLUS의 최종 장문 편집장입니다. 아래 1차 기본 글에 실무 설명을 충분히 살붙여 최종 글 전체를 다시 작성하세요.",
+        "HTML 태그를 제외한 실제 한국어 본문 목표는 " + input.targetChars.toLocaleString("ko-KR") + "자이며, 최소 " + minimum.toLocaleString("ko-KR") + "자 이상이어야 합니다. 같은 말을 반복하거나 문장을 억지로 늘리지 마세요.",
+        "다음 요소를 모두 넣으세요: 600자 이상의 문제 제기형 서론, 핵심 요약, 개념과 중요성의 상세 설명, 단계별 현장 적용, 서로 다른 실무 사례 3개 이상, 흔한 실수 7개 이상, 현장 체크리스트 10개 이상, FAQ 5문항 이상, 실행 중심 결론.",
+        "근거 범위 안에서 읽기 쉬운 HTML 표를 2개 이상 추가하세요. 표는 caption, thead, tbody, th scope를 사용하고 절차표·확인표·대응표처럼 실제 업무에 바로 쓸 수 있어야 합니다.",
+        "각 h2 섹션은 한두 문단으로 끝내지 말고 이유, 판단 기준, 실행 방법, 기록 시 주의점, 현장 예시를 충분히 설명하세요.",
+        "표와 본문에 대본에 없는 법령 번호, 기준 수치, 의무, 처벌, 인증 요구사항을 만들지 마세요. 확인되지 않은 내용은 확인 필요라고 표시하세요.",
+        "주제: " + input.topic + " / 분야: " + input.category,
+        "공식 출처: " + (input.sources.join("\n") || "제공되지 않음"),
+        "[근거 요약]\n" + JSON.stringify(analysis),
+        "[원 대본 발췌]\n" + transcript.slice(0,30000),
+        "[Claude 1차 기본 글]\n" + JSON.stringify(draft),
+        "기존 영상 삽입, QA PLUS 무료자료 CTA(" + DRIVE_URL + "), 면책 문구를 유지하세요. 이미지 URL은 넣지 마세요.",
+        "Markdown 코드블록 없이 완성본 전체를 다음 JSON으로 반환하세요:",
+        '{"title":"최종 제목","description":"150자 이내 설명","labels":["분야"],"keywords":["키워드"],"html":"목표 길이와 표·FAQ를 충족한 최종 Blogger HTML"}'
+      ].join("\n\n");
+    };
+
+    function buildLengthCorrectionPrompt(input, transcript, analysis, current, currentLength) {
+      const minimum = Math.ceil(input.targetChars * 0.9);
+      return [
+        "아래 최종 글이 " + currentLength.toLocaleString("ko-KR") + "자로 너무 짧습니다. HTML 태그를 제외한 본문이 최소 " + minimum.toLocaleString("ko-KR") + "자, 목표 " + input.targetChars.toLocaleString("ko-KR") + "자가 되도록 완성본 전체를 다시 확장하세요.",
+        "기존 문장을 반복해 채우지 말고, 근거 대본에서 빠진 설명, 판단 과정, 서로 다른 현장 사례, 표 2개 이상, 체크리스트 10개 이상, FAQ 5개 이상을 구체화하세요.",
+        "근거에 없는 수치·법령·의무는 만들지 말고 확인 필요로 표시하세요. 영상, 무료자료 CTA, 면책 문구를 보존하세요.",
+        "주제: " + input.topic + " / 분야: " + input.category,
+        "[근거 분석]\n" + JSON.stringify(analysis),
+        "[근거 대본 발췌]\n" + transcript.slice(0,25000),
+        "[현재 글]\n" + JSON.stringify(current),
+        "Markdown 없이 title, description, labels, keywords, html 키를 가진 JSON 완성본만 반환하세요."
+      ].join("\n\n");
+    };
+
+    function visibleTextLength(html) {
+      const doc = new DOMParser().parseFromString(String(html || ""),"text/html");
+      return (doc.body.textContent || "").replace(/\s+/g," ").trim().length;
+    };
 
     function escapeHtml(value = "") {
       return String(value).replace(/[&<>"']/g, (char) => ({
@@ -873,12 +1159,13 @@
       const transcript = els.transcript.value.trim();
       const videoValue = els.videoUrl.value.trim();
       if (!topic) throw new Error("핵심 주제를 입력해 주세요.");
-      if (transcript.length < 120) throw new Error("대본이나 원문을 120자 이상 입력해 주세요.");
+      if (!videoValue && transcript.length < 120) throw new Error("YouTube 영상 주소를 입력하거나 보조 대본을 120자 이상 입력해 주세요.");
       if (videoValue && !getVideoId(videoValue)) throw new Error("YouTube 영상 주소 형식을 확인해 주세요.");
       return {
         topic,
         transcript,
         category:els.category.value,
+        targetChars:Number(els.targetLength.value) || 9000,
         videoUrl:videoValue,
         videoId:getVideoId(videoValue),
         sources:normalizeSources(els.sources.value)
@@ -939,14 +1226,8 @@
       })).filter((item) => item.prompt);
     }
 
-    function imageGenerationsEndpoint(endpoint) {
-      const url = new URL(endpoint);
-      url.pathname = url.pathname.replace(/\/chat\/completions\/?$/,"/images/generations");
-      return url.toString();
-    }
-
-    function insertBrollFigure(item,dataUrl,index) {
-      const figure = `<figure style="margin:24px 0"><img src="${dataUrl}" alt="${escapeHtml(item.alt)}" loading="lazy" style="display:block;width:100%;height:auto;border-radius:14px"><figcaption style="margin-top:8px;color:#6a7b86;font-size:.82rem;text-align:center">${escapeHtml(item.alt)}</figcaption></figure>`;
+    function insertBrollFigure(item, imageUrl, index) {
+      const figure = '<figure style="margin:24px 0"><img src="' + escapeHtml(imageUrl) + '" alt="' + escapeHtml(item.alt) + '" loading="lazy" style="display:block;width:100%;height:auto;border-radius:14px"><figcaption style="margin-top:8px;color:#6a7b86;font-size:.82rem;text-align:center">' + escapeHtml(item.alt) + '</figcaption></figure>';
       const html = sanitizePostHtml(els.htmlEditor.value);
       const headings = [...html.matchAll(/<\/h2>/gi)];
       if (headings.length) {
@@ -957,57 +1238,81 @@
         els.htmlEditor.value = figure + html;
       }
       state.post.html = els.htmlEditor.value;
-    }
+    };
 
-    async function generateBrollImages() {
-      if (!state.post) return showNotice("먼저 블로그 글을 생성해 주세요.","error");
+    async function requestBrollImage(settings, item) {
+      const response = await fetch(cheapSubEndpoint(settings.endpoint,"images/generations"),{
+        method:"POST",
+        headers:{"Content-Type":"application/json","Authorization":"Bearer " + settings.aiKey},
+        body:JSON.stringify({model:settings.imageModel,prompt:item.prompt,n:1,size:"1792x1024",quality:"hd",style:"natural",response_format:"url"})
+      });
+      const raw = await response.text();
+      let data;
+      try { data = JSON.parse(raw); } catch (_) { data = {}; }
+      if (!response.ok) throw new Error((data.error && data.error.message) || "이미지 요청 실패 (" + response.status + "): " + raw.slice(0,220));
+      const image = data.data && data.data[0];
+      if (!image) throw new Error("CheapSub 이미지 응답에 data[0]이 없습니다.");
+      const candidate = image.proxy_url || image.url || image.download_url;
+      if (candidate) {
+        const resolved = new URL(candidate,settings.endpoint).toString();
+        if (!/^https:\/\//i.test(resolved)) throw new Error("Blogger에 삽입할 HTTPS 이미지 주소를 받지 못했습니다.");
+        return resolved;
+      }
+      if (image.b64_json) return "data:image/png;base64," + image.b64_json;
+      throw new Error("CheapSub 이미지 응답에 proxy_url, url, download_url 또는 b64_json이 없습니다.");
+    };
+
+    async function generateBrollImages(options = {}) {
+      const fromPipeline = Boolean(options && options.fromPipeline);
+      const propagate = Boolean(options && options.propagate);
+      if (!state.post) {
+        const error = new Error("먼저 블로그 글을 생성해 주세요.");
+        if (propagate) throw error;
+        return showNotice(error.message,"error");
+      }
       const settings = getSettings();
-      if (!settings.aiKey) return showNotice("CheapSub API 키가 필요합니다. 경제냠냠 설정 가져오기를 먼저 눌러 주세요.","error");
+      if (!settings.aiKey) {
+        const error = new Error("CheapSub API 키가 필요합니다. 설정·검증에서 키를 입력해 주세요.");
+        if (propagate) throw error;
+        return showNotice(error.message,"error");
+      }
       const prompts = currentBrollPrompts();
       const count = Math.min(Number(els.brollCount.value) || 1,prompts.length);
-      if (!prompts.length) return showNotice("B-roll 프롬프트를 먼저 생성해 주세요.","error");
-      const button = $("generateBroll");
+      if (!prompts.length) {
+        const error = new Error("B-roll 프롬프트를 먼저 생성해 주세요.");
+        if (propagate) throw error;
+        return showNotice(error.message,"error");
+      }
+      const button = document.getElementById("generateBroll");
+      const startIndex = fromPipeline ? Math.min(state.pipeline.images.length,count) : 0;
       button.disabled = true;
-      button.innerHTML = `<span class="spinner"></span>실사 이미지 0/${count}`;
+      button.innerHTML = '<span class="spinner"></span>OpenAI 이미지 ' + startIndex + '/' + count;
       els.brollResult.className = "broll-result show";
-      els.brollResult.textContent = "CheapSub 이미지 생성 도구를 호출하고 있습니다. 장당 시간이 걸릴 수 있습니다.";
+      els.brollResult.textContent = "CheapSub gpt-image-2 이미지 생성을 호출하고 있습니다. 장당 시간이 걸릴 수 있습니다.";
       try {
-        for (let index=0; index<count; index += 1) {
-          button.innerHTML = `<span class="spinner"></span>실사 이미지 ${index + 1}/${count}`;
-          const response = await fetch(imageGenerationsEndpoint(settings.endpoint),{
-            method:"POST",
-            headers:{"Content-Type":"application/json","Authorization":`Bearer ${settings.aiKey}`},
-            body:JSON.stringify({
-              model:BROLL_IMAGE_MODEL,
-              prompt:prompts[index].prompt,
-              n:1,
-              size:"1792x1024",
-              quality:"standard",
-              style:"natural",
-              response_format:"b64_json"
-            })
-          });
-          const data = await response.json().catch(() => ({}));
-          if (!response.ok) throw new Error(data.error?.message || `이미지 요청 실패 (${response.status})`);
-          const imageData = data.data?.[0]?.b64_json;
-          if (!imageData) throw new Error("CheapSub 이미지 응답에 b64_json 데이터가 없습니다.");
-          const dataUrl = `data:image/png;base64,${imageData}`;
-          insertBrollFigure(prompts[index],dataUrl,index);
-          state.imageCount += 1;
-          els.brollResult.innerHTML = `<strong>${state.imageCount}장 생성·본문 삽입 완료</strong><img src="${dataUrl}" alt="${escapeHtml(prompts[index].alt)}">`;
+        for (let index=startIndex; index<count; index += 1) {
+          button.innerHTML = '<span class="spinner"></span>OpenAI 이미지 ' + (index + 1) + '/' + count;
+          const imageUrl = await requestBrollImage(settings,prompts[index]);
+          insertBrollFigure(prompts[index],imageUrl,index);
+          if (fromPipeline) state.pipeline.images.push({url:imageUrl,alt:prompts[index].alt,prompt:prompts[index].prompt});
+          state.imageCount = fromPipeline ? state.pipeline.images.length : state.imageCount + 1;
+          els.brollResult.innerHTML = '<strong>' + state.imageCount + '장 생성·본문 삽입 완료</strong><img src="' + escapeHtml(imageUrl) + '" alt="' + escapeHtml(prompts[index].alt) + '">';
           renderPreview();
         }
-        setBadge(els.brollStatus,`${state.imageCount}장 삽입`,"ok");
-        showNotice(`QA PLUS 실사 B-roll 이미지 ${count}장을 만들고 본문에 삽입했습니다.`,"success");
+        setBadge(els.brollStatus,state.imageCount + "장 삽입","ok");
+        if (!fromPipeline) showNotice("QA PLUS 실사 B-roll 이미지 " + count + "장을 만들고 본문에 삽입했습니다.","success");
+        return state.imageCount;
       } catch (error) {
         setBadge(els.brollStatus,"생성 확인 필요","warn");
         els.brollResult.textContent = error.message;
-        showNotice(error.message,"error");
+        if (!fromPipeline) showNotice(error.message,"error");
+        if (propagate) throw error;
+        return 0;
       } finally {
         button.disabled = false;
         button.textContent = "실사 이미지 생성·삽입";
       }
-    }
+    };
 
     function copyBrollPrompts() {
       const text = currentBrollPrompts().map((item,index) => `${index + 1}. ${item.prompt}`).join("\n\n");
@@ -1162,52 +1467,115 @@ ${input.transcript}
       renderBrollPrompts(input);
       els.metaCount.textContent = `${els.metaDescription.value.length} / 150자`;
       els.seoVideo.textContent = input.videoId ? `YouTube ${input.videoId}` : "연결된 영상 없음";
+      els.postLength.textContent = visibleTextLength(state.post.html).toLocaleString("ko-KR") + "자 / 목표 " + input.targetChars.toLocaleString("ko-KR") + "자";
       els.resultEmpty.hidden = true;
       els.resultEditor.hidden = false;
       setBadge(els.resultBadge,"검토 필요","warn");
-      setStep(3);
+      setStep(4);
       renderPreview();
       $("result-card").scrollIntoView({behavior:"smooth",block:"start"});
       updatePublishButton();
     }
 
-    async function generateWithAi() {
+    async function runFiveStagePipeline(startStep = 1) {
+      if (state.pipeline.running) return;
       let input;
       try { input = validateInput(); } catch (error) { showNotice(error.message,"error"); return; }
       const settings = getSettings();
       if (!settings.aiKey) {
-        showNotice("설정·검증 탭에서 CheapSub API 키를 입력해 주세요. 키 없이도 ‘API 없이 초안 만들기’를 사용할 수 있습니다.","error");
+        showNotice("5단계 실행에는 CheapSub API 키가 필요합니다. 설정·검증에서 키를 입력해 주세요.","error");
         return;
       }
-      setBusy(true,"AI 작성 중...");
-      setStep(2);
+      if (startStep === 1 || state.pipeline.inputFingerprint !== pipelineFingerprint(input)) clearPipelineState(input);
+      else els.pipelinePanel.hidden = false;
+      if (startStep > 1 && !state.pipeline.transcript) startStep = 1;
+      if (startStep > 2 && !state.pipeline.analysis) startStep = 2;
+      if (startStep > 3 && !state.pipeline.draft) startStep = 3;
+      if (startStep > 4 && !state.pipeline.expanded) startStep = 4;
+      state.pipeline.running = true;
+      state.pipeline.failedStep = 0;
+      els.retryPipeline.hidden = true;
+      setBusy(true,"1/5 Gemini 대본 추출 중...");
+      let activeStep = startStep;
       try {
-        const response = await fetch(settings.endpoint,{
-          method:"POST",
-          headers:{"Content-Type":"application/json","Authorization":`Bearer ${settings.aiKey}`},
-          body:JSON.stringify({
-            model:settings.model,
-            messages:[
-              {role:"system",content:"You are the senior editor for QA PLUS. Return valid JSON only."},
-              {role:"user",content:buildAiPrompt(input)}
-            ],
-            max_tokens:7000
-          })
-        });
-        const raw = await response.text();
-        if (!response.ok) throw new Error(`AI 요청 실패 (${response.status}): ${raw.slice(0,180)}`);
-        const data = JSON.parse(raw);
-        const content = data.choices?.[0]?.message?.content;
-        if (!content) throw new Error("AI 응답 본문이 비어 있습니다.");
-        renderResult(parseAiJson(content),input);
-        showNotice("QA PLUS 전문가형 블로그 글을 생성했습니다. 발행 전 사실과 링크를 확인해 주세요.","success");
+        if (startStep <= 1) {
+          activeStep = 1;
+          setBusy(true,"1/5 Gemini 대본 추출 중...");
+          setPipelineStage(1,"running","영상 분석 중");
+          state.pipeline.transcript = await extractTranscriptWithGemini(input,settings);
+          updatePipelineOutputs();
+          setPipelineStage(1,"done",state.pipeline.warning ? "보조 대본 사용" : (input.videoUrl ? "추출 완료" : "직접 대본"));
+        }
+        if (startStep <= 2) {
+          activeStep = 2;
+          setBusy(true,"2/5 ChatGPT 분석 중...");
+          setPipelineStage(2,"running","1단계 분석 중");
+          const analysisRaw = await callOpenAiChat(settings,[
+            {role:"system",content:"You are the QA PLUS content analyst. Return valid JSON only."},
+            {role:"user",content:buildAnalysisPrompt(input,state.pipeline.transcript)}
+          ],7000);
+          state.pipeline.analysis = parseLooseJson(analysisRaw,"ChatGPT 분석");
+          updatePipelineOutputs();
+          setPipelineStage(2,"done","분석 완료");
+        }
+        if (startStep <= 3) {
+          activeStep = 3;
+          setBusy(true,"3/5 Claude 1차 기본 글 작성 중...");
+          setPipelineStage(3,"running","기본 글 작성 중");
+          const draftRaw = await callClaude(settings,buildClaudeDraftPrompt(input,state.pipeline.transcript,state.pipeline.analysis),14000);
+          state.pipeline.draft = parseAiJson(draftRaw);
+          const draftLength = visibleTextLength(state.pipeline.draft.html);
+          updatePipelineOutputs();
+          setPipelineStage(3,"done",draftLength.toLocaleString("ko-KR") + "자 기본 글");
+        }
+        if (startStep <= 4) {
+          activeStep = 4;
+          const minimumLength = Math.ceil(input.targetChars * 0.9);
+          setBusy(true,"4/5 Claude 2차 살붙이기 중...");
+          setPipelineStage(4,"running","사례·표·FAQ 확장 중");
+          const expandedRaw = await callClaude(settings,buildClaudeExpansionPrompt(input,state.pipeline.transcript,state.pipeline.analysis,state.pipeline.draft),18000);
+          let expanded = parseAiJson(expandedRaw);
+          let finalLength = visibleTextLength(expanded.html);
+          if (finalLength < minimumLength) {
+            setBusy(true,"4/5 목표 길이 자동 보강 중...");
+            setPipelineStage(4,"running",finalLength.toLocaleString("ko-KR") + "자 → 보강 중");
+            const correctedRaw = await callClaude(settings,buildLengthCorrectionPrompt(input,state.pipeline.transcript,state.pipeline.analysis,expanded,finalLength),18000);
+            expanded = parseAiJson(correctedRaw);
+            finalLength = visibleTextLength(expanded.html);
+          }
+          const tableCount = (expanded.html.match(/<table[\s>]/gi) || []).length;
+          const requiredTables = input.targetChars >= 9000 ? 2 : 1;
+          if (tableCount < requiredTables) throw new Error("Claude 2차 글에 실무 표가 부족합니다. 필요한 표: " + requiredTables + "개, 현재: " + tableCount + "개");
+          if (finalLength < minimumLength) throw new Error("최종 글이 " + finalLength.toLocaleString("ko-KR") + "자로 목표 " + input.targetChars.toLocaleString("ko-KR") + "자에 미달했습니다. 4단계를 다시 실행해 주세요.");
+          state.pipeline.expanded = expanded;
+          renderResult(state.pipeline.expanded,input);
+          validatePost(false);
+          setPipelineStage(4,"done",finalLength.toLocaleString("ko-KR") + "자·표 " + tableCount + "개");
+        }
+        if (startStep <= 5) {
+          activeStep = 5;
+          setBusy(true,"5/5 OpenAI 이미지 생성 중...");
+          setPipelineStage(5,"running","gpt-image-2 생성 중");
+          await generateBrollImages({fromPipeline:true,propagate:true});
+          setPipelineStage(5,"done",state.pipeline.images.length + "장 삽입");
+          setStep(5);
+        }
+        state.pipeline.failedStep = 0;
+        setBadge(els.pipelineOverall,state.pipeline.warning ? "5단계 완료·주의" : "5단계 완료",state.pipeline.warning ? "warn" : "ok");
+        showNotice(state.pipeline.warning ? "5단계 자동화를 완료했습니다. " + state.pipeline.warning : "Gemini→ChatGPT→Claude→Claude 확장→OpenAI 이미지 5단계를 완료했습니다.",state.pipeline.warning ? "info" : "success");
       } catch (error) {
-        console.error("AI generation failed",error);
-        showNotice(`${error.message} API 연결을 확인하거나 API 없는 초안을 사용해 주세요.`,"error");
+        console.error("Five-stage pipeline failed",error);
+        state.pipeline.failedStep = activeStep;
+        state.lastAiError = error.message;
+        setPipelineStage(activeStep,"failed","재시도 필요");
+        setBadge(els.pipelineOverall,activeStep + "단계 실패","warn");
+        els.retryPipeline.hidden = false;
+        showNotice(activeStep + "단계에서 중단됐습니다: " + error.message,"error");
       } finally {
+        state.pipeline.running = false;
         setBusy(false);
       }
-    }
+    };
 
     function generateLocally() {
       let input;
@@ -1234,7 +1602,7 @@ ${input.transcript}
       state.post.html = html;
       if (showSuccess) {
         setBadge(els.resultBadge,"검사 통과","ok");
-        setStep(4);
+        setStep(state.pipeline.images.length ? 5 : 4);
         showNotice("발행 전 검사를 통과했습니다.","success");
       }
       return true;
@@ -1259,7 +1627,11 @@ ${input.transcript}
       return {
         endpoint:normalizeAiEndpoint(els.aiEndpoint.value.trim() || saved.endpoint || DEFAULT_AI_ENDPOINT),
         model:els.aiModel.value.trim() || saved.model || "gpt-5.6-sol",
+        claudeModel:els.claudeModel.value.trim() || saved.claudeModel || "claude-opus-5",
+        imageModel:els.imageModel.value.trim() || saved.imageModel || "gpt-image-2",
         aiKey:els.aiKey.value.trim() || saved.aiKey || "",
+        geminiModel:els.geminiModel.value.trim() || saved.geminiModel || "gemini-3.6-flash",
+        geminiKey:els.geminiKey.value.trim() || saved.geminiKey || "",
         clientId:els.googleClientId.value.trim() || saved.clientId || ""
       };
     }
@@ -1272,7 +1644,6 @@ ${input.transcript}
         aiKeySource:source || saved.aiKeySource || ""
       }));
     }
-
     function saveSettings(showMessage = true) {
       const button = $("saveAllSettings");
       if (showMessage) {
@@ -1293,18 +1664,19 @@ ${input.transcript}
       state.lastAiError = "";
       els.aiEndpoint.value = settings.endpoint;
       persistSettings(settings,"manual");
-      setBadge(els.aiStatus,settings.aiKey ? "설정됨" : "미설정",settings.aiKey ? "ok" : "");
+      setBadge(els.aiStatus,settings.aiKey && settings.geminiKey ? "파이프라인 설정됨" : (settings.aiKey ? "Gemini 키 필요" : "미설정"),settings.aiKey && settings.geminiKey ? "ok" : "warn");
       state.verification.ai = false;
+      state.verification.gemini = false;
       refreshVerificationSummary();
       if (showMessage) {
         setActionFeedback(
           els.aiActionFeedback,
           "설정 저장 완료 ✓",
-          "현재 브라우저 탭에 저장했습니다. 새로고침해도 경제냠냠의 예전 키로 덮어쓰지 않습니다.",
-          settings.aiKey ? "success" : "warn"
+          "현재 브라우저 탭에 저장했습니다. 새로고침해도 경제냠냠의 예전 키로 덮어쓰지 않습니다. 다음으로 ‘전체 연결 검증’을 눌러 주세요.",
+          settings.aiKey && settings.geminiKey ? "success" : "warn"
         );
         button.textContent = "저장 완료 ✓";
-        showNotice("CheapSub와 Google 설정을 현재 탭에 저장했습니다. 이제 전체 연결 검증을 실행해 주세요.","success");
+        showNotice("CheapSub·Gemini·Google 설정을 현재 탭에 저장했습니다. 누락된 키가 있으면 입력한 뒤 전체 연결 검증을 실행해 주세요.",settings.aiKey && settings.geminiKey ? "success" : "info");
         window.setTimeout(() => {
           button.disabled = false;
           button.textContent = "설정 저장";
@@ -1317,9 +1689,13 @@ ${input.transcript}
       const settings = getSettings();
       if (settings.endpoint) els.aiEndpoint.value = settings.endpoint;
       if (settings.model) els.aiModel.value = settings.model;
+      if (settings.claudeModel) els.claudeModel.value = settings.claudeModel;
+      if (settings.imageModel) els.imageModel.value = settings.imageModel;
       if (settings.aiKey) els.aiKey.value = settings.aiKey;
+      if (settings.geminiModel) els.geminiModel.value = settings.geminiModel;
+      if (settings.geminiKey) els.geminiKey.value = settings.geminiKey;
       if (settings.clientId) els.googleClientId.value = settings.clientId;
-      setBadge(els.aiStatus,settings.aiKey ? "설정됨" : "미설정",settings.aiKey ? "ok" : "");
+      setBadge(els.aiStatus,settings.aiKey && settings.geminiKey ? "파이프라인 설정됨" : (settings.aiKey ? "Gemini 키 필요" : "미설정"),settings.aiKey && settings.geminiKey ? "ok" : "warn");
       refreshVerificationSummary();
     }
 
@@ -1409,6 +1785,49 @@ ${input.transcript}
       }
     }
 
+    async function verifyGeminiConnection() {
+      const settings = getSettings();
+      if (!settings.geminiKey) {
+        state.lastAiError = "Google Gemini API 키가 비어 있습니다.";
+        setVerifyStatus("gemini","키 없음","warn");
+        return false;
+      }
+      setVerifyStatus("gemini","확인 중","warn");
+      try {
+        const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(settings.geminiModel),{headers:{"x-goog-api-key":settings.geminiKey}});
+        const raw = await response.text();
+        if (!response.ok) throw new Error("Gemini HTTP " + response.status + ": " + raw.slice(0,240));
+        const data = JSON.parse(raw);
+        if (!data.name) throw new Error("Gemini 모델 응답 형식이 올바르지 않습니다.");
+        setVerifyStatus("gemini","모델 접근 확인","ok");
+        setActionFeedback(els.aiActionFeedback,"Gemini 연결 성공 ✓",settings.geminiModel + " 모델에 접근할 수 있습니다.","success");
+        return true;
+      } catch (error) {
+        state.lastAiError = error.message;
+        setVerifyStatus("gemini","실패","warn");
+        setActionFeedback(els.aiActionFeedback,"Gemini 연결 실패",error.message,"error");
+        return false;
+      }
+    };
+
+    async function testGeminiOnly() {
+      if (state.verification.checking) return;
+      const button = document.getElementById("testGemini");
+      if (!saveSettings(false)) return;
+      state.verification.checking = true;
+      button.disabled = true;
+      button.innerHTML = '<span class="spinner"></span>Gemini 검사 중...';
+      try {
+        const ok = await verifyGeminiConnection();
+        showNotice(ok ? "Gemini 연결이 정상입니다." : "Gemini 연결 실패 원인을 설정 화면에 표시했습니다.",ok ? "success" : "error");
+      } finally {
+        state.verification.checking = false;
+        button.disabled = false;
+        button.textContent = "Gemini 다시 검사";
+        updateOverallReadiness();
+      }
+    };
+
     async function testCheapSubOnly() {
       if (state.verification.checking) return;
       const button = $("testCheapSub");
@@ -1470,7 +1889,7 @@ ${input.transcript}
     async function validateConnections() {
       if (state.verification.checking) return;
       setAppView("settings");
-      setValidationProgress(5,"1/4 저장된 설정값을 확인하는 중...");
+      setValidationProgress(5,"1/5 저장된 설정값을 확인하는 중...");
       if (!saveSettings(false)) {
         setValidationProgress(0,"설정값을 먼저 확인해 주세요.");
         setActionFeedback(els.aiActionFeedback,"검증을 시작하지 못했습니다.","AI API 주소와 필수 설정값을 확인해 주세요.","error");
@@ -1481,27 +1900,31 @@ ${input.transcript}
       els.verifyAllConnections.innerHTML = '<span class="spinner"></span>검증 중...';
       updateOverallReadiness();
       try {
-        setValidationProgress(25,"2/4 CheapSub API에 최소 응답을 요청하는 중...");
+        setValidationProgress(22,"2/5 CheapSub API에 최소 응답을 요청하는 중...");
         const aiOk = await verifyAiConnection();
-        setValidationProgress(55,aiOk ? "2/4 CheapSub 연결 통과 ✓" : "2/4 CheapSub 연결 실패 — 항목 결과를 확인해 주세요.");
+        setValidationProgress(42,aiOk ? "2/5 CheapSub 연결 통과 ✓" : "2/5 CheapSub 연결 실패 — 항목 결과를 확인해 주세요.");
 
-        setValidationProgress(68,"3/4 Google 권한과 Blogger·YouTube 연결을 확인하는 중...");
+        setValidationProgress(50,"3/5 Gemini 모델 접근을 확인하는 중...");
+        const geminiOk = await verifyGeminiConnection();
+        setValidationProgress(64,geminiOk ? "3/5 Gemini 연결 통과 ✓" : "3/5 Gemini 연결 실패 — 키와 모델을 확인해 주세요.");
+
+        setValidationProgress(72,"4/5 Google 권한과 Blogger·YouTube 연결을 확인하는 중...");
         const googleOk = await verifyGoogleConnections();
-        setValidationProgress(90,googleOk ? "3/4 Google·Blogger·YouTube 연결 통과 ✓" : "3/4 Google 연결 미통과 — 승인 또는 채널 계정을 확인해 주세요.");
+        setValidationProgress(90,googleOk ? "4/5 Google·Blogger·YouTube 연결 통과 ✓" : "4/5 Google 연결 미통과 — 승인 또는 채널 계정을 확인해 주세요.");
 
         const ready = updateOverallReadiness();
         if (ready) {
-          setValidationProgress(100,"4/4 전체 연결 검증 완료 ✓");
-          showNotice("전체 연결 검증을 통과했습니다. FULL 테스트를 진행할 수 있습니다.","success");
-        } else if (!aiOk) {
-          setValidationProgress(92,"CheapSub 실패: " + state.lastAiError);
-          els.verificationMessage.textContent = "CheapSub 실패 원인: " + state.lastAiError;
-          showNotice("CheapSub 실패 원인이 설정 화면에 계속 표시됩니다.","error");
+          setValidationProgress(100,"5/5 전체 연결 검증 완료 ✓");
+          showNotice("전체 연결 검증을 통과했습니다. 5단계 자동화를 실행할 수 있습니다.","success");
+        } else if (!aiOk || !geminiOk) {
+          setValidationProgress(92,"AI 연결 실패: " + state.lastAiError);
+          els.verificationMessage.textContent = "AI 연결 실패 원인: " + state.lastAiError;
+          showNotice("CheapSub 또는 Gemini 실패 원인이 설정 화면에 표시됩니다.","error");
         } else if (!state.googleToken) {
-          setValidationProgress(92,"4/4 Google 권한 연결이 남았습니다. 위의 연결 버튼을 눌러 주세요.");
-          showNotice("CheapSub 검사는 완료했습니다. Google·YouTube 권한 연결 버튼을 눌러 승인해 주세요.","info");
+          setValidationProgress(92,"5/5 Google 권한 연결이 남았습니다. 위의 연결 버튼을 눌러 주세요.");
+          showNotice("AI 검사는 완료했습니다. Blogger 발행을 위해 Google·YouTube 권한을 연결해 주세요.","info");
         } else {
-          setValidationProgress(92,"4/4 Google 연결 항목을 확인해 주세요.");
+          setValidationProgress(92,"5/5 Google 연결 항목을 확인해 주세요.");
           showNotice("Google 연결 일부가 통과하지 못했습니다. 항목별 결과를 확인해 주세요.",googleOk ? "info" : "error");
         }
       } catch (error) {
@@ -1570,8 +1993,9 @@ ${input.transcript}
         if (clientId) els.googleClientId.value = clientId;
         const settings = getSettings();
         persistSettings(settings,"econnyam");
-        setBadge(els.aiStatus,settings.aiKey ? "경제냠냠 키 적용" : "키 없음",settings.aiKey ? "ok" : "warn");
+        setBadge(els.aiStatus,settings.aiKey && settings.geminiKey ? "파이프라인 설정됨" : (settings.aiKey ? "CheapSub 적용·Gemini 키 필요" : "키 없음"),settings.aiKey && settings.geminiKey ? "ok" : "warn");
         state.verification.ai = false;
+        state.verification.gemini = false;
         refreshVerificationSummary();
 
         const parts = [settings.aiKey && "CheapSub",settings.clientId && "Google OAuth"].filter(Boolean);
@@ -1581,7 +2005,7 @@ ${input.transcript}
           setActionFeedback(
             els.aiActionFeedback,
             found ? "경제냠냠 설정 가져오기 완료 ✓" : "가져올 설정을 찾지 못했습니다.",
-            found ? `${parts.join("·")} 설정을 현재 탭에 적용했습니다. 이제 ‘설정 저장’을 눌러 주세요.` : "이 브라우저에서 경제냠냠 앱을 먼저 열어 설정을 저장한 뒤 다시 시도해 주세요.",
+            found ? `${parts.join("·")} 설정을 현재 탭에 적용했습니다. Gemini 키는 별도로 입력한 뒤 ‘설정 저장’을 눌러 주세요.` : "이 브라우저에서 경제냠냠 앱을 먼저 열어 설정을 저장한 뒤 다시 시도해 주세요.",
             found ? "success" : "warn"
           );
           showNotice(found ? `경제냠냠에서 ${parts.join("·")} 설정을 안전하게 가져왔습니다.` : "이 브라우저에서 경제냠냠 저장 설정을 찾지 못했습니다.",found ? "success" : "info");
@@ -1607,33 +2031,6 @@ ${input.transcript}
         if (!response.ok) throw new Error(data?.error?.message || `Google API 요청 실패 (${response.status})`);
         return data;
       });
-    }
-
-    function stripSrt(value) {
-      const seen = new Set();
-      return String(value).replace(/\uFEFF/g,"").split(/\r?\n/).map((line) => line.trim())
-        .filter((line) => line && !/^\d+$/.test(line) && !/^\d{2}:\d{2}:\d{2}[,.]\d{3}\s+-->/i.test(line))
-        .map((line) => line.replace(/<[^>]+>/g,"").trim())
-        .filter((line) => line && !seen.has(line) && seen.add(line))
-        .join(" ");
-    }
-
-    async function fetchOwnedTranscript(videoId) {
-      if (!state.youtubeOwned) return "";
-      const list = await googleApi(`https://www.googleapis.com/youtube/v3/captions?part=snippet&videoId=${encodeURIComponent(videoId)}`);
-      const tracks = (list.items || []).filter((item) => item.snippet?.status === "serving");
-      const track = tracks.find((item) => item.snippet?.language === "ko" && item.snippet?.trackKind !== "ASR")
-        || tracks.find((item) => item.snippet?.language === "ko")
-        || tracks[0];
-      if (!track?.id) return "";
-      const response = await fetch(`https://www.googleapis.com/youtube/v3/captions/${encodeURIComponent(track.id)}?tfmt=srt`,{
-        headers:{Authorization:`Bearer ${state.googleToken}`}
-      });
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.error?.message || `자막 다운로드 실패 (${response.status})`);
-      }
-      return stripSrt(await response.text());
     }
 
     function renderYoutubeVideos() {
@@ -1674,20 +2071,10 @@ ${input.transcript}
       const videoId = item.contentDetails.videoId;
       els.videoUrl.value = `https://www.youtube.com/watch?v=${videoId}`;
       els.topic.value = item.snippet.title || "";
-      setBadge(els.videoBadge,"영상 선택됨","ok");
-      setBadge(els.youtubeStatus,"자막 확인 중","warn");
-      let transcript = "";
-      try { transcript = await fetchOwnedTranscript(videoId); } catch (error) { console.warn("Caption fallback",error); }
-      if (transcript.length >= 120) {
-        els.transcript.value = transcript;
-        showNotice(`소유 영상의 자막 ${transcript.length.toLocaleString("ko-KR")}자를 가져왔습니다.`,"success");
-      } else {
-        els.transcript.value = item.snippet.description || "";
-        showNotice("자동 자막을 가져오지 못해 영상 설명을 넣었습니다. 글 생성 전 최종 승인 대본인지 확인해 주세요.","info");
-      }
-      els.charCount.textContent = `${els.transcript.value.length.toLocaleString("ko-KR")}자`;
+      setBadge(els.videoBadge,"Gemini 분석 준비","ok");
       setBadge(els.youtubeStatus,state.youtubeOwned ? "소유 채널 연결" : "공개 채널 조회",state.youtubeOwned ? "ok" : "warn");
       els.sources.value = [...new Set([els.videoUrl.value,...els.sources.value.split(/\r?\n/).filter(Boolean)])].join("\n");
+      showNotice("영상을 선택했습니다. 5단계 실행 시 Gemini가 음성과 화면에서 대본을 추출합니다.","success");
       els.videoUrl.scrollIntoView({behavior:"smooth",block:"center"});
     }
 
@@ -1880,7 +2267,10 @@ ${input.transcript}
       [els.videoUrl,els.topic,els.transcript,els.sources].forEach((element) => element.value = "");
       els.charCount.textContent = "0자";
       setBadge(els.videoBadge,"입력 대기");
-      showNotice("입력 내용을 지웠습니다.","info");
+      state.pipeline = {transcript:"",analysis:null,draft:null,expanded:null,images:[],failedStep:0,running:false,inputFingerprint:"",warning:""};
+      els.pipelinePanel.hidden = true;
+      els.retryPipeline.hidden = true;
+      showNotice("입력 내용과 파이프라인 중간 결과를 지웠습니다.","info");
     }
 
     els.transcript.addEventListener("input",() => els.charCount.textContent = `${els.transcript.value.length.toLocaleString("ko-KR")}자`);
@@ -1890,11 +2280,13 @@ ${input.transcript}
     });
     els.metaDescription.addEventListener("input",() => els.metaCount.textContent = `${els.metaDescription.value.length} / 150자`);
     els.postTitle.addEventListener("input",renderPreview);
-    els.generateAi.addEventListener("click",generateWithAi);
+    els.generateAi.addEventListener("click",() => runFiveStagePipeline(1));
+    els.retryPipeline.addEventListener("click",() => runFiveStagePipeline(state.pipeline.failedStep || 1));
     els.generateLocal.addEventListener("click",generateLocally);
     els.clearSource.addEventListener("click",clearSource);
     $("saveAllSettings").addEventListener("click",() => saveSettings(true));
     $("testCheapSub").addEventListener("click",testCheapSubOnly);
+    $("testGemini").addEventListener("click",testGeminiOnly);
     $("verifyAllConnections").addEventListener("click",validateConnections);
     $("importEconnyam").addEventListener("click",async () => { await importEconnyamSettings(true); });
     $("connectGoogle").addEventListener("click",connectGoogle);
