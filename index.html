@@ -118,6 +118,31 @@
     .settings-body{display:grid;gap:12px;padding:0 13px 14px}
     .settings-body input{min-height:41px;font-size:.78rem}
     .security-note{margin:0;padding:10px;border-radius:9px;background:#fff7ed;color:#8a4b0f;font-size:.71rem}
+    .studio-nav{display:flex;align-items:center;gap:5px;margin-left:18px;padding:4px;border:1px solid var(--line);border-radius:12px;background:#f4f7f8}
+    .studio-tab{min-height:34px;border:0;border-radius:8px;padding:7px 12px;background:transparent;color:var(--muted);font-size:.76rem;font-weight:900}
+    .studio-tab.active{background:#fff;box-shadow:0 4px 12px rgba(11,31,51,.09);color:var(--teal)}
+    .app-view[hidden]{display:none!important}
+    .settings-view{display:grid;gap:18px}
+    .settings-hero{display:flex;align-items:center;justify-content:space-between;gap:22px;padding:24px;border:1px solid #b9e3da;border-radius:20px;background:linear-gradient(135deg,#f0fbf8,#fff);box-shadow:0 8px 24px rgba(11,31,51,.055)}
+    .settings-hero h2{margin:0;color:var(--navy);font-size:1.35rem}
+    .settings-hero p{margin:6px 0 0;color:var(--muted);font-size:.84rem}
+    .settings-layout{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+    .settings-card{padding:22px;border:1px solid var(--line);border-radius:18px;background:#fff;box-shadow:0 8px 24px rgba(11,31,51,.055)}
+    .settings-card.wide{grid-column:1/-1}
+    .settings-section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:18px}
+    .settings-section-head h3{margin:0;color:var(--navy);font-size:1.02rem}
+    .settings-section-head p{margin:4px 0 0;color:var(--muted);font-size:.74rem}
+    .settings-fields{display:grid;gap:13px}
+    .settings-actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:16px}
+    .verify-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .verify-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 14px;border:1px solid var(--line);border-radius:12px;background:#f8fafb}
+    .verify-copy{display:grid;gap:2px}
+    .verify-copy strong{color:var(--navy);font-size:.8rem}
+    .verify-copy small{color:var(--muted);font-size:.68rem}
+    .verify-summary{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;padding:14px;border-radius:13px;background:var(--navy);color:#fff}
+    .verify-summary span{font-size:.76rem;font-weight:750}
+    .settings-link-list{display:grid;gap:8px;margin:14px 0 0;padding:0;list-style:none}
+    .settings-link-list li{display:flex;gap:8px;color:var(--muted);font-size:.73rem}
     .notice{display:none;margin-bottom:18px;padding:13px 15px;border:1px solid;border-radius:12px;font-size:.82rem;font-weight:700}
     .notice.show{display:block}
     .notice.info{border-color:#b9d9ea;background:#eef8fd;color:#23536c}
@@ -169,10 +194,10 @@
     .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.45);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
     @keyframes spin{to{transform:rotate(360deg)}}
     @media (max-width:980px){
-      .workspace{grid-template-columns:1fr}.sidebar{position:static;grid-template-columns:1fr 1fr}.hero-grid{grid-template-columns:1fr}.hero-status{display:none}
+      .workspace{grid-template-columns:1fr}.sidebar{position:static;grid-template-columns:1fr 1fr}.hero-grid{grid-template-columns:1fr}.hero-status{display:none}.settings-layout{grid-template-columns:1fr}.settings-card.wide{grid-column:auto}
     }
     @media (max-width:720px){
-      .container{width:min(100% - 24px,1180px)}.topbar-inner{min-height:64px}.brand-copy span{display:none}.top-links a:not(.youtube){display:none}.hero{padding:40px 0 31px}.hero h1{font-size:2.15rem}.steps{grid-template-columns:1fr 1fr}.step{padding:9px;font-size:.75rem}.workspace{gap:16px}.grid-2,.seo-grid,.sidebar,.video-list,.broll-grid{grid-template-columns:1fr}.card-head,.card-body{padding-left:17px;padding-right:17px}.editor-tabs{padding-inline:17px}.publish-choice{grid-template-columns:1fr}.footer-inner{align-items:flex-start;flex-direction:column}
+      .container{width:min(100% - 24px,1180px)}.topbar-inner{min-height:64px;flex-wrap:wrap;padding-block:8px}.brand-copy span{display:none}.studio-nav{order:3;width:100%;margin:0}.studio-tab{flex:1}.top-links a:not(.youtube){display:none}.hero{padding:40px 0 31px}.hero h1{font-size:2.15rem}.steps{grid-template-columns:1fr 1fr}.step{padding:9px;font-size:.75rem}.workspace{gap:16px}.grid-2,.seo-grid,.sidebar,.video-list,.broll-grid,.verify-grid{grid-template-columns:1fr}.settings-hero{align-items:flex-start;flex-direction:column}.card-head,.card-body{padding-left:17px;padding-right:17px}.editor-tabs{padding-inline:17px}.publish-choice{grid-template-columns:1fr}.footer-inner{align-items:flex-start;flex-direction:column}
     }
     @media (max-width:420px){
       .steps{grid-template-columns:1fr}.hero-actions a{width:100%;justify-content:center}.toolbar .btn{width:100%}
@@ -188,6 +213,10 @@
         <span class="brand-mark">QA+</span>
         <span class="brand-copy"><strong>QA PLUS Blog Studio</strong><span>FOOD SAFETY CONTENT AUTOMATION</span></span>
       </a>
+      <div class="studio-nav" role="tablist" aria-label="앱 화면">
+        <button class="studio-tab active" type="button" data-app-view="automation" role="tab" aria-selected="true">글 자동화</button>
+        <button class="studio-tab" type="button" data-app-view="settings" role="tab" aria-selected="false">설정·검증</button>
+      </div>
       <nav class="top-links" aria-label="빠른 연결">
         <a href="https://qaplus-haccp.blogspot.com/" target="_blank" rel="noopener noreferrer">블로그</a>
         <a href="https://drive.google.com/drive/folders/1tHqeagzD__Oqjc027TVJhcWQC0JkOIV6?usp=sharing" target="_blank" rel="noopener noreferrer">무료자료</a>
@@ -203,7 +232,7 @@
         <h1>영상 대본 한 편을<br><strong>전문적인 블로그 글로</strong></h1>
         <p>YouTube 대본을 입력하면 QA PLUS 페르소나, 검색 설명, Blogger용 HTML, 라벨과 무료자료 안내까지 한 번에 준비합니다.</p>
         <div class="hero-actions">
-          <a href="#source-card">새 글 만들기</a>
+          <a id="openAutomationHero" href="#source-card">새 글 만들기</a>
           <a href="https://qaplus-haccp.blogspot.com/" target="_blank" rel="noopener noreferrer">QA PLUS 블로그 보기</a>
         </div>
       </div>
@@ -219,7 +248,7 @@
     </div>
   </section>
 
-  <div class="progress-wrap" aria-label="작업 단계">
+  <div id="workflowProgress" class="progress-wrap" aria-label="작업 단계">
     <div class="container">
       <ol class="steps">
         <li class="step active" data-step="1"><b>1</b>영상·대본 입력</li>
@@ -234,7 +263,121 @@
     <div class="container">
       <div id="notice" class="notice" role="status" aria-live="polite"></div>
 
-      <div class="workspace">
+      <section id="settingsView" class="app-view settings-view" hidden aria-labelledby="settingsPageTitle">
+        <div class="settings-hero">
+          <div>
+            <h2 id="settingsPageTitle">설정과 연결 검증</h2>
+            <p>경제냠냠 방식처럼 필요한 값을 한 번에 저장하고, 실제 서비스 연결을 순서대로 확인합니다.</p>
+          </div>
+          <span id="settingsOverall" class="badge warn">검증 전</span>
+        </div>
+
+        <div class="settings-layout">
+          <article class="settings-card">
+            <div class="settings-section-head">
+              <div>
+                <h3>1. CheapSub AI</h3>
+                <p>글 작성과 실사 B-roll 생성에 공통으로 사용하는 API 설정입니다.</p>
+              </div>
+              <span id="verifyAiStatus" class="badge">검증 전</span>
+            </div>
+            <div class="settings-fields">
+              <div class="field">
+                <label for="aiEndpoint">OpenAI 호환 API 주소</label>
+                <input id="aiEndpoint" value="https://api.cheapsub.im/v1/chat/completions" autocomplete="off" spellcheck="false">
+              </div>
+              <div class="field">
+                <label for="aiModel">글 생성 모델</label>
+                <input id="aiModel" value="gpt-5.6-sol" autocomplete="off" spellcheck="false">
+              </div>
+              <div class="field">
+                <label for="aiKey">CheapSub API 키</label>
+                <input id="aiKey" name="qaplus_cheapsub_token" type="text" placeholder="csk_... (현재 탭에서만 사용)" autocomplete="off" autocapitalize="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" style="-webkit-text-security:disc">
+              </div>
+              <p class="security-note">키는 소스 코드나 주소에 포함하지 않고 현재 브라우저 탭의 sessionStorage에만 저장합니다.</p>
+            </div>
+            <div class="settings-actions">
+              <button id="importEconnyam" class="btn btn-mint btn-small" type="button">경제냠냠 설정 가져오기</button>
+              <button id="saveAllSettings" class="btn btn-secondary btn-small" type="button">설정 저장</button>
+            </div>
+          </article>
+
+          <article class="settings-card">
+            <div class="settings-section-head">
+              <div>
+                <h3>2. Google·채널</h3>
+                <p>Blogger 임시저장, QA PLUS 영상 목록과 소유 자막을 연결합니다.</p>
+              </div>
+              <span id="verifyGoogleStatus" class="badge">연결 전</span>
+            </div>
+            <div class="settings-fields">
+              <div class="field">
+                <label for="googleClientId">Google OAuth Client ID</label>
+                <input id="googleClientId" value="359001642002-d4r6rga5rs7jc0n19c10o6gd77n854ga.apps.googleusercontent.com" autocomplete="off" spellcheck="false">
+              </div>
+              <div class="field">
+                <label>대상 Blogger</label>
+                <input value="https://qaplus-haccp.blogspot.com/" readonly>
+              </div>
+              <div class="field">
+                <label>대상 YouTube</label>
+                <input value="@qaplus_haccp" readonly>
+              </div>
+              <p class="security-note">Google 토큰은 메모리에만 유지됩니다. 새로고침하면 안전하게 다시 연결해야 합니다.</p>
+            </div>
+            <div class="settings-actions">
+              <button id="connectGoogle" class="btn btn-primary btn-small" type="button">Google·YouTube 권한 연결</button>
+            </div>
+          </article>
+
+          <article class="settings-card wide">
+            <div class="settings-section-head">
+              <div>
+                <h3>3. 전체 연결 검증</h3>
+                <p>저장값뿐 아니라 CheapSub 응답, Blogger 접근, QA PLUS 채널 소유 여부까지 실제로 확인합니다.</p>
+              </div>
+              <span id="verifySettingsStatus" class="badge">입력 확인 전</span>
+            </div>
+            <div class="verify-grid">
+              <div class="verify-row">
+                <div class="verify-copy"><strong>CheapSub 글 생성</strong><small>최소 응답 1회로 키·모델·CORS 확인</small></div>
+                <span id="verifyAiDetail" class="badge">대기</span>
+              </div>
+              <div class="verify-row">
+                <div class="verify-copy"><strong>Google OAuth</strong><small>Blogger·YouTube 권한 토큰 확인</small></div>
+                <span id="verifyGoogleDetail" class="badge">대기</span>
+              </div>
+              <div class="verify-row">
+                <div class="verify-copy"><strong>QA PLUS Blogger</strong><small>qaplus-haccp.blogspot.com ID 확인</small></div>
+                <span id="verifyBloggerStatus" class="badge">대기</span>
+              </div>
+              <div class="verify-row">
+                <div class="verify-copy"><strong>QA PLUS YouTube</strong><small>@qaplus_haccp 소유 채널·영상 확인</small></div>
+                <span id="verifyYoutubeStatus" class="badge">대기</span>
+              </div>
+              <div class="verify-row">
+                <div class="verify-copy"><strong>고정 링크</strong><small>블로그·YouTube·무료자료 주소 확인</small></div>
+                <span id="verifyLinksStatus" class="badge ok">등록됨</span>
+              </div>
+              <div class="verify-row">
+                <div class="verify-copy"><strong>B-roll 이미지</strong><small>같은 CheapSub 키로 FULL 테스트에서 실제 생성</small></div>
+                <span class="badge warn">FULL 테스트</span>
+              </div>
+            </div>
+            <div class="verify-summary">
+              <span id="verificationMessage">설정을 저장한 뒤 전체 연결 검증을 눌러 주세요.</span>
+              <button id="verifyAllConnections" class="btn btn-mint btn-small" type="button">전체 연결 검증</button>
+            </div>
+            <ul class="settings-link-list">
+              <li><b>안전:</b> 검증은 Blogger에 글을 만들지 않습니다.</li>
+              <li><b>비용:</b> CheapSub 연결 확인을 위한 아주 짧은 텍스트 요청 1회가 실행됩니다.</li>
+              <li><b>최종 확인:</b> 실제 이미지 생성과 Blogger 임시저장은 FULL 테스트 단계에서 검증합니다.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <div id="automationView" class="workspace app-view">
         <div class="stack">
           <section id="source-card" class="card">
             <div class="card-head">
@@ -385,41 +528,7 @@
               <div class="connection-row"><span>QA PLUS YouTube</span><span id="youtubeStatus" class="badge">연결 안 됨</span></div>
               <div class="connection-row"><span>QA PLUS 블로그</span><span class="badge ok">주소 확인</span></div>
             </div>
-          </section>
-
-          <section class="side-card">
-            <h2>API·OAuth 설정</h2>
-            <details>
-              <summary>AI 설정 열기</summary>
-              <div class="settings-body">
-                <div class="field">
-                  <label for="aiEndpoint">OpenAI 호환 API 주소</label>
-                  <input id="aiEndpoint" value="https://api.cheapsub.im/v1/chat/completions">
-                </div>
-                <div class="field">
-                  <label for="aiModel">모델</label>
-                  <input id="aiModel" value="gpt-5.6-sol">
-                </div>
-                <div class="field">
-                  <label for="aiKey">API 키</label>
-                  <input id="aiKey" name="qaplus_cheapsub_token" type="text" placeholder="csk_... (현재 탭에서만 사용)" autocomplete="off" autocapitalize="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" style="-webkit-text-security:disc">
-                </div>
-                <p class="security-note">API 키는 소스 코드에 포함되지 않으며 이 탭의 임시 저장소에만 보관됩니다. 공용 PC에서는 입력하지 마세요.</p>
-                <button id="importEconnyam" class="btn btn-mint btn-small" type="button">경제냠냠 설정 안전하게 가져오기</button>
-                <button id="saveAiSettings" class="btn btn-secondary btn-small" type="button">AI 설정 적용</button>
-              </div>
-            </details>
-            <details style="margin-top:10px">
-              <summary>Google·YouTube 통합 연결 열기</summary>
-              <div class="settings-body">
-                <div class="field">
-                  <label for="googleClientId">Google OAuth Client ID</label>
-                  <input id="googleClientId" value="359001642002-d4r6rga5rs7jc0n19c10o6gd77n854ga.apps.googleusercontent.com" autocomplete="off" spellcheck="false">
-                </div>
-                <p class="security-note">Google Cloud OAuth에 이 GitHub Pages 원본을 등록해야 합니다. 소유 영상 자막 다운로드 때문에 YouTube 권한 문구가 넓게 표시되지만, 이 앱은 채널·영상·자막 조회만 사용합니다. 토큰은 메모리에만 유지됩니다.</p>
-                <button id="connectGoogle" class="btn btn-secondary btn-small" type="button">Google·YouTube 연결</button>
-              </div>
-            </details>
+            <button id="openSettingsFromSidebar" class="btn btn-secondary btn-small" type="button" style="width:100%;margin-top:13px">설정·연결 검증 열기</button>
           </section>
 
           <section class="side-card">
@@ -511,7 +620,8 @@
       youtubeVideos: [],
       youtubeOwned: false,
       imageCount: 0,
-      busy: false
+      busy: false,
+      verification:{settings:false,ai:false,google:false,blogger:false,youtube:false,links:true,checking:false}
     };
 
     const $ = (id) => document.getElementById(id);
@@ -527,7 +637,13 @@
       youtubeStatus:$("youtubeStatus"), loadYoutube:$("loadYoutube"), channelSummary:$("channelSummary"), videoList:$("videoList"),
       brollGrid:$("brollGrid"), brollStatus:$("brollStatus"), brollResult:$("brollResult"), brollCount:$("brollCount"),
       publishBlogger:$("publishBlogger"), publishLog:$("publishLog"), videoBadge:$("videoBadge"),
-      seoVideo:$("seoVideo")
+      seoVideo:$("seoVideo"), settingsView:$("settingsView"), automationView:$("automationView"),
+      workflowProgress:$("workflowProgress"), settingsOverall:$("settingsOverall"),
+      verifySettingsStatus:$("verifySettingsStatus"), verifyAiStatus:$("verifyAiStatus"),
+      verifyAiDetail:$("verifyAiDetail"), verifyGoogleStatus:$("verifyGoogleStatus"),
+      verifyGoogleDetail:$("verifyGoogleDetail"), verifyBloggerStatus:$("verifyBloggerStatus"),
+      verifyYoutubeStatus:$("verifyYoutubeStatus"), verifyLinksStatus:$("verifyLinksStatus"),
+      verificationMessage:$("verificationMessage"), verifyAllConnections:$("verifyAllConnections")
     };
 
     function showNotice(message, type = "info") {
@@ -541,6 +657,55 @@
     function setBadge(element, text, mode = "") {
       element.className = `badge ${mode}`.trim();
       element.textContent = text;
+    }
+
+    function setAppView(view) {
+      const settingsOpen = view === "settings";
+      els.settingsView.hidden = !settingsOpen;
+      els.automationView.hidden = settingsOpen;
+      els.workflowProgress.hidden = settingsOpen;
+      document.querySelectorAll("[data-app-view]").forEach((button) => {
+        const active = button.dataset.appView === view;
+        button.classList.toggle("active",active);
+        button.setAttribute("aria-selected",String(active));
+      });
+      window.scrollTo({top:0,behavior:"smooth"});
+    }
+
+    function setVerifyStatus(key, text, mode = "") {
+      const targets = {
+        settings:els.verifySettingsStatus,
+        ai:els.verifyAiDetail,
+        google:els.verifyGoogleDetail,
+        blogger:els.verifyBloggerStatus,
+        youtube:els.verifyYoutubeStatus,
+        links:els.verifyLinksStatus
+      };
+      if (targets[key]) setBadge(targets[key],text,mode);
+      if (Object.prototype.hasOwnProperty.call(state.verification,key)) state.verification[key] = mode === "ok";
+      if (key === "ai") setBadge(els.verifyAiStatus,text,mode);
+      if (key === "google") setBadge(els.verifyGoogleStatus,text,mode);
+      updateOverallReadiness();
+    }
+
+    function updateOverallReadiness() {
+      const ready = state.verification.settings && state.verification.ai && state.verification.google
+        && state.verification.blogger && state.verification.youtube && state.verification.links;
+      setBadge(els.settingsOverall,ready ? "전체 준비 완료" : (state.verification.checking ? "검증 중" : "검증 필요"),ready ? "ok" : "warn");
+      els.verificationMessage.textContent = ready
+        ? "모든 핵심 연결이 정상입니다. 글 자동화에서 FULL 테스트를 진행할 수 있습니다."
+        : "미통과 항목을 확인해 주세요. Google 권한은 별도 승인 창에서 허용해야 합니다.";
+      return ready;
+    }
+
+    function refreshVerificationSummary() {
+      const settings = getSettings();
+      const settingsReady = Boolean(settings.aiKey && settings.clientId && validHttpUrl(settings.endpoint) && settings.model);
+      setVerifyStatus("settings",settingsReady ? "필수값 입력됨" : "필수값 확인",settingsReady ? "ok" : "warn");
+      setVerifyStatus("links","등록됨","ok");
+      if (settings.aiKey && !state.verification.ai) setVerifyStatus("ai","검증 필요","warn");
+      if (settings.clientId && !state.googleToken) setVerifyStatus("google","권한 연결 필요","warn");
+      return settingsReady;
     }
 
     function setStep(number) {
@@ -897,7 +1062,7 @@ ${input.transcript}
       try { input = validateInput(); } catch (error) { showNotice(error.message,"error"); return; }
       const settings = getSettings();
       if (!settings.aiKey) {
-        showNotice("오른쪽 API·OAuth 설정에서 AI API 키를 입력해 주세요. 키 없이도 ‘API 없이 초안 만들기’를 사용할 수 있습니다.","error");
+        showNotice("설정·검증 탭에서 CheapSub API 키를 입력해 주세요. 키 없이도 ‘API 없이 초안 만들기’를 사용할 수 있습니다.","error");
         return;
       }
       setBusy(true,"AI 작성 중...");
@@ -972,15 +1137,18 @@ ${input.transcript}
       };
     }
 
-    function saveSettings() {
+    function saveSettings(showMessage = true) {
       const settings = getSettings();
       if (settings.endpoint && !validHttpUrl(settings.endpoint)) {
         showNotice("AI API 주소 형식을 확인해 주세요.","error");
-        return;
+        return false;
       }
       sessionStorage.setItem(SESSION_KEY,JSON.stringify(settings));
       setBadge(els.aiStatus,settings.aiKey ? "설정됨" : "미설정",settings.aiKey ? "ok" : "");
-      showNotice("AI 설정을 현재 탭에 적용했습니다.","success");
+      state.verification.ai = false;
+      refreshVerificationSummary();
+      if (showMessage) showNotice("CheapSub와 Google 설정을 현재 탭에 저장했습니다. 이제 전체 연결 검증을 실행해 주세요.","success");
+      return true;
     }
 
     function restoreSettings() {
@@ -990,6 +1158,92 @@ ${input.transcript}
       if (settings.aiKey) els.aiKey.value = settings.aiKey;
       if (settings.clientId) els.googleClientId.value = settings.clientId;
       setBadge(els.aiStatus,settings.aiKey ? "설정됨" : "미설정",settings.aiKey ? "ok" : "");
+      refreshVerificationSummary();
+    }
+
+    async function verifyAiConnection() {
+      const settings = getSettings();
+      if (!settings.aiKey) {
+        setVerifyStatus("ai","키 없음","warn");
+        return false;
+      }
+      setVerifyStatus("ai","확인 중","warn");
+      try {
+        const response = await fetch(settings.endpoint,{
+          method:"POST",
+          headers:{"Content-Type":"application/json","Authorization":"Bearer " + settings.aiKey},
+          body:JSON.stringify({
+            model:settings.model,
+            messages:[{role:"user",content:"Reply with exactly QA_PLUS_OK"}],
+            max_tokens:16
+          })
+        });
+        const raw = await response.text();
+        if (!response.ok) throw new Error("HTTP " + response.status + ": " + raw.slice(0,160));
+        const data = JSON.parse(raw);
+        if (!data.choices || !data.choices[0] || !data.choices[0].message) throw new Error("응답 형식이 올바르지 않습니다.");
+        setVerifyStatus("ai","정상 응답","ok");
+        setBadge(els.aiStatus,"연결 검증됨","ok");
+        return true;
+      } catch (error) {
+        setVerifyStatus("ai","실패","warn");
+        setBadge(els.aiStatus,"연결 실패","warn");
+        els.verificationMessage.textContent = "CheapSub 확인 실패: " + error.message;
+        return false;
+      }
+    }
+
+    async function verifyGoogleConnections() {
+      if (!state.googleToken) {
+        setVerifyStatus("google","권한 연결 필요","warn");
+        setVerifyStatus("blogger","대기","warn");
+        setVerifyStatus("youtube","대기","warn");
+        return false;
+      }
+      setVerifyStatus("google","OAuth 연결됨","ok");
+      let bloggerOk = false;
+      let youtubeOk = false;
+      try {
+        await resolveBlogId();
+        bloggerOk = Boolean(state.blogId);
+        setVerifyStatus("blogger",bloggerOk ? "블로그 확인" : "확인 실패",bloggerOk ? "ok" : "warn");
+        setBadge(els.googleStatus,bloggerOk ? "연결됨" : "확인 실패",bloggerOk ? "ok" : "warn");
+      } catch (error) {
+        setVerifyStatus("blogger","확인 실패","warn");
+        els.verificationMessage.textContent = "Blogger 확인 실패: " + error.message;
+      }
+      try {
+        const videos = await fetchQaPlusVideos();
+        youtubeOk = state.youtubeOwned && videos.length > 0;
+        setVerifyStatus("youtube",state.youtubeOwned ? "소유 채널 확인" : "다른 채널 계정",youtubeOk ? "ok" : "warn");
+      } catch (error) {
+        setVerifyStatus("youtube","확인 실패","warn");
+        els.verificationMessage.textContent = "YouTube 확인 실패: " + error.message;
+      }
+      return bloggerOk && youtubeOk;
+    }
+
+    async function validateConnections() {
+      if (state.verification.checking) return;
+      if (!saveSettings(false)) return;
+      setAppView("settings");
+      state.verification.checking = true;
+      els.verifyAllConnections.disabled = true;
+      els.verifyAllConnections.innerHTML = '<span class="spinner"></span>검증 중...';
+      updateOverallReadiness();
+      try {
+        const aiOk = await verifyAiConnection();
+        const googleOk = await verifyGoogleConnections();
+        const ready = updateOverallReadiness();
+        if (ready) showNotice("전체 연결 검증을 통과했습니다. FULL 테스트를 진행할 수 있습니다.","success");
+        else if (!state.googleToken) showNotice("CheapSub 검사는 완료했습니다. Google·YouTube 권한 연결 버튼을 눌러 승인해 주세요.",aiOk ? "info" : "error");
+        else showNotice("일부 연결이 통과하지 못했습니다. 설정 화면의 항목별 결과를 확인해 주세요.",(aiOk && googleOk) ? "info" : "error");
+      } finally {
+        state.verification.checking = false;
+        els.verifyAllConnections.disabled = false;
+        els.verifyAllConnections.textContent = "전체 연결 검증";
+        updateOverallReadiness();
+      }
     }
 
     async function readEconnyamIndexedDb() {
@@ -1036,6 +1290,8 @@ ${input.transcript}
       const settings = getSettings();
       sessionStorage.setItem(SESSION_KEY,JSON.stringify(settings));
       setBadge(els.aiStatus,settings.aiKey ? "경제냠냠 키 적용" : "키 없음",settings.aiKey ? "ok" : "warn");
+      state.verification.ai = false;
+      refreshVerificationSummary();
       $("importEconnyam").textContent = settings.aiKey ? "경제냠냠 설정 가져옴 ✓" : "경제냠냠 설정을 찾지 못함";
       if (showMessage) {
         const parts = [settings.aiKey && "CheapSub",settings.clientId && "Google OAuth"].filter(Boolean);
@@ -1152,30 +1408,40 @@ ${input.transcript}
         scope:GOOGLE_SCOPES,
         callback:async (response) => {
           if (response.error) {
+            setVerifyStatus("google","승인 실패","warn");
             showNotice(`Google 연결 실패: ${response.error}`,"error");
             return;
           }
           state.googleToken = response.access_token;
+          setVerifyStatus("google","OAuth 연결됨","ok");
           try {
             await resolveBlogId();
+            setVerifyStatus("blogger","블로그 확인","ok");
             setBadge(els.googleStatus,"연결됨","ok");
             updatePublishButton();
             let youtubeMessage = "";
             try {
               const videos = await fetchQaPlusVideos();
+              setVerifyStatus("youtube",state.youtubeOwned ? "소유 채널 확인" : "다른 채널 계정",state.youtubeOwned && videos.length ? "ok" : "warn");
               youtubeMessage = ` QA PLUS 영상 ${videos.length}편을 불러왔습니다.`;
             } catch (youtubeError) {
               setBadge(els.youtubeStatus,"API 확인 필요","warn");
+              setVerifyStatus("youtube","확인 실패","warn");
               youtubeMessage = ` YouTube 연결 확인: ${youtubeError.message}`;
             }
+            updateOverallReadiness();
             showNotice(`Google Blogger 연결이 완료됐습니다.${youtubeMessage}`,"success");
           } catch (error) {
             state.googleToken = "";
+            setVerifyStatus("google","확인 실패","warn");
+            setVerifyStatus("blogger","확인 실패","warn");
             setBadge(els.googleStatus,"확인 실패","warn");
             showNotice(error.message,"error");
           }
         }
       });
+      setVerifyStatus("google","승인 대기","warn");
+      showNotice("Google 승인 창에서 QA PLUS 계정을 선택하고 권한을 허용해 주세요.","info");
       state.googleTokenClient.requestAccessToken({prompt:"consent"});
     }
 
@@ -1285,9 +1551,15 @@ ${input.transcript}
     els.generateAi.addEventListener("click",generateWithAi);
     els.generateLocal.addEventListener("click",generateLocally);
     els.clearSource.addEventListener("click",clearSource);
-    $("saveAiSettings").addEventListener("click",saveSettings);
+    $("saveAllSettings").addEventListener("click",() => saveSettings(true));
+    $("verifyAllConnections").addEventListener("click",validateConnections);
     $("importEconnyam").addEventListener("click",async () => { await importEconnyamSettings(true); });
     $("connectGoogle").addEventListener("click",connectGoogle);
+    $("openSettingsFromSidebar").addEventListener("click",() => setAppView("settings"));
+    $("openAutomationHero").addEventListener("click",() => setAppView("automation"));
+    document.querySelectorAll("[data-app-view]").forEach((button) => {
+      button.addEventListener("click",() => setAppView(button.dataset.appView));
+    });
     els.loadYoutube.addEventListener("click",() => fetchQaPlusVideos().catch((error) => showNotice(error.message,"error")));
     $("generateBroll").addEventListener("click",generateBrollImages);
     $("copyBroll").addEventListener("click",copyBrollPrompts);
@@ -1322,7 +1594,8 @@ ${input.transcript}
     });
 
     restoreSettings();
-    importEconnyamSettings(false);
+    importEconnyamSettings(false).then(refreshVerificationSummary);
+    setAppView("automation");
   </script>
 </body>
 </html>
