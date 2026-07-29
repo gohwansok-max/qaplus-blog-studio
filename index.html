@@ -324,6 +324,7 @@
             <div class="settings-actions">
               <button id="importEconnyam" class="btn btn-mint btn-small" type="button">경제냠냠 설정 가져오기</button>
               <button id="saveAllSettings" class="btn btn-secondary btn-small" type="button">설정 저장</button>
+              <button id="testCheapSub" class="btn btn-primary btn-small" type="button">CheapSub만 검사</button>
             </div>
             <div id="aiActionFeedback" class="action-feedback" role="status" aria-live="polite"></div>
           </article>
@@ -653,6 +654,7 @@
       imageCount: 0,
       busy: false,
       installPrompt:null,
+      lastAiError:"",
       verification:{settings:false,ai:false,google:false,blogger:false,youtube:false,links:true,checking:false}
     };
 
@@ -768,7 +770,9 @@
       setBadge(els.settingsOverall,ready ? "전체 준비 완료" : (state.verification.checking ? "검증 중" : "검증 필요"),ready ? "ok" : "warn");
       els.verificationMessage.textContent = ready
         ? "모든 핵심 연결이 정상입니다. 글 자동화에서 FULL 테스트를 진행할 수 있습니다."
-        : "미통과 항목을 확인해 주세요. Google 권한은 별도 승인 창에서 허용해야 합니다.";
+        : (state.lastAiError
+          ? "CheapSub 실패 원인: " + state.lastAiError
+          : "미통과 항목을 확인해 주세요. Google 권한은 별도 승인 창에서 허용해야 합니다.");
       return ready;
     }
 
@@ -1228,6 +1232,7 @@ ${input.transcript}
         }
         return false;
       }
+      state.lastAiError = "";
       sessionStorage.setItem(SESSION_KEY,JSON.stringify(settings));
       setBadge(els.aiStatus,settings.aiKey ? "설정됨" : "미설정",settings.aiKey ? "ok" : "");
       state.verification.ai = false;
@@ -1259,13 +1264,44 @@ ${input.transcript}
       refreshVerificationSummary();
     }
 
+    function explainCheapSubError(message = "") {
+      const raw = String(message || "알 수 없는 오류").replace(/\s+/g," ").trim().slice(0,320);
+      if (/HTTP 401|unauthorized|invalid.*(?:key|token)|authentication/i.test(raw)) {
+        return `401 인증 실패 — CheapSub 키가 올바르지 않거나 만료됐습니다. 원문: ${raw}`;
+      }
+      if (/HTTP 403|forbidden|permission/i.test(raw)) {
+        return `403 권한 거부 — 해당 키의 모델/API 사용 권한을 확인해 주세요. 원문: ${raw}`;
+      }
+      if (/HTTP 429|quota|credit|balance|rate.?limit/i.test(raw)) {
+        return `429 사용량 제한 — CheapSub 잔액·쿼터·호출 제한을 확인해 주세요. 원문: ${raw}`;
+      }
+      if (/HTTP 404|model.*not.*found|unknown model/i.test(raw)) {
+        return `모델 또는 엔드포인트를 찾지 못했습니다. 원문: ${raw}`;
+      }
+      if (/Failed to fetch|NetworkError|Load failed/i.test(raw)) {
+        return `브라우저 네트워크/CORS 오류입니다. 원문: ${raw}`;
+      }
+      return raw;
+    }
+
     async function verifyAiConnection() {
       const settings = getSettings();
+      state.lastAiError = "";
       if (!settings.aiKey) {
+        state.lastAiError = "CheapSub API 키가 비어 있습니다.";
         setVerifyStatus("ai","키 없음","warn");
+        setActionFeedback(els.aiActionFeedback,"CheapSub 연결 실패",state.lastAiError,"error");
+        return false;
+      }
+      if (!/^csk_/i.test(settings.aiKey)) {
+        state.lastAiError = "키 형식이 csk_로 시작하지 않습니다. CheapSub에서 발급한 키만 붙여넣어 주세요.";
+        setVerifyStatus("ai","키 형식 오류","warn");
+        setBadge(els.aiStatus,"키 확인 필요","warn");
+        setActionFeedback(els.aiActionFeedback,"CheapSub 키 형식 오류",state.lastAiError,"error");
         return false;
       }
       setVerifyStatus("ai","확인 중","warn");
+      setActionFeedback(els.aiActionFeedback,"CheapSub에 실제 요청을 보내는 중...","${settings.model} · ${settings.endpoint}","info",true);
       try {
         const response = await fetch(settings.endpoint,{
           method:"POST",
@@ -1277,17 +1313,48 @@ ${input.transcript}
           })
         });
         const raw = await response.text();
-        if (!response.ok) throw new Error("HTTP " + response.status + ": " + raw.slice(0,160));
+        if (!response.ok) throw new Error("HTTP " + response.status + ": " + raw.slice(0,240));
         const data = JSON.parse(raw);
-        if (!data.choices || !data.choices[0] || !data.choices[0].message) throw new Error("응답 형식이 올바르지 않습니다.");
+        if (!data.choices || !data.choices[0] || !data.choices[0].message) throw new Error("응답 형식이 올바르지 않습니다: " + raw.slice(0,200));
         setVerifyStatus("ai","정상 응답","ok");
         setBadge(els.aiStatus,"연결 검증됨","ok");
+        setActionFeedback(els.aiActionFeedback,"CheapSub 연결 성공 ✓",`${settings.model} 모델이 정상 응답했습니다.`,"success");
         return true;
       } catch (error) {
+        state.lastAiError = explainCheapSubError(error.message);
         setVerifyStatus("ai","실패","warn");
         setBadge(els.aiStatus,"연결 실패","warn");
-        els.verificationMessage.textContent = "CheapSub 확인 실패: " + error.message;
+        setActionFeedback(els.aiActionFeedback,"CheapSub 연결 실패",state.lastAiError,"error");
+        els.verificationMessage.textContent = "CheapSub 실패 원인: " + state.lastAiError;
         return false;
+      }
+    }
+
+    async function testCheapSubOnly() {
+      if (state.verification.checking) return;
+      const button = $("testCheapSub");
+      if (!saveSettings(false)) {
+        setActionFeedback(els.aiActionFeedback,"검사를 시작하지 못했습니다.","API 주소 형식을 확인해 주세요.","error");
+        return;
+      }
+      state.verification.checking = true;
+      button.disabled = true;
+      button.innerHTML = '<span class="spinner"></span>CheapSub 검사 중...';
+      setValidationProgress(25,"CheapSub 단독 연결 검사를 시작했습니다...");
+      try {
+        const ok = await verifyAiConnection();
+        if (ok) {
+          setValidationProgress(100,"CheapSub 단독 검사 통과 ✓");
+          showNotice("CheapSub 연결이 정상입니다.","success");
+        } else {
+          setValidationProgress(92,"CheapSub 실패: " + state.lastAiError);
+          showNotice("CheapSub 실패 원인이 화면에 표시됐습니다.","error");
+        }
+      } finally {
+        state.verification.checking = false;
+        button.disabled = false;
+        button.textContent = "CheapSub 다시 검사";
+        updateOverallReadiness();
       }
     }
 
@@ -1347,12 +1414,16 @@ ${input.transcript}
         if (ready) {
           setValidationProgress(100,"4/4 전체 연결 검증 완료 ✓");
           showNotice("전체 연결 검증을 통과했습니다. FULL 테스트를 진행할 수 있습니다.","success");
+        } else if (!aiOk) {
+          setValidationProgress(92,"CheapSub 실패: " + state.lastAiError);
+          els.verificationMessage.textContent = "CheapSub 실패 원인: " + state.lastAiError;
+          showNotice("CheapSub 실패 원인이 설정 화면에 계속 표시됩니다.","error");
         } else if (!state.googleToken) {
           setValidationProgress(92,"4/4 Google 권한 연결이 남았습니다. 위의 연결 버튼을 눌러 주세요.");
-          showNotice("CheapSub 검사는 완료했습니다. Google·YouTube 권한 연결 버튼을 눌러 승인해 주세요.",aiOk ? "info" : "error");
+          showNotice("CheapSub 검사는 완료했습니다. Google·YouTube 권한 연결 버튼을 눌러 승인해 주세요.","info");
         } else {
-          setValidationProgress(92,"4/4 일부 항목이 미통과입니다. 위의 항목별 결과를 확인해 주세요.");
-          showNotice("일부 연결이 통과하지 못했습니다. 설정 화면의 항목별 결과를 확인해 주세요.",(aiOk && googleOk) ? "info" : "error");
+          setValidationProgress(92,"4/4 Google 연결 항목을 확인해 주세요.");
+          showNotice("Google 연결 일부가 통과하지 못했습니다. 항목별 결과를 확인해 주세요.",googleOk ? "info" : "error");
         }
       } catch (error) {
         setValidationProgress(92,`검증 중 오류: ${error.message}`);
@@ -1744,6 +1815,7 @@ ${input.transcript}
     els.generateLocal.addEventListener("click",generateLocally);
     els.clearSource.addEventListener("click",clearSource);
     $("saveAllSettings").addEventListener("click",() => saveSettings(true));
+    $("testCheapSub").addEventListener("click",testCheapSubOnly);
     $("verifyAllConnections").addEventListener("click",validateConnections);
     $("importEconnyam").addEventListener("click",async () => { await importEconnyamSettings(true); });
     $("connectGoogle").addEventListener("click",connectGoogle);
