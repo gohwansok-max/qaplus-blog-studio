@@ -1243,6 +1243,15 @@ ${input.transcript}
       };
     }
 
+    function persistSettings(settings, source = "") {
+      let saved = {};
+      try { saved = JSON.parse(sessionStorage.getItem(SESSION_KEY) || "{}"); } catch (_) {}
+      sessionStorage.setItem(SESSION_KEY,JSON.stringify({
+        ...settings,
+        aiKeySource:source || saved.aiKeySource || ""
+      }));
+    }
+
     function saveSettings(showMessage = true) {
       const button = $("saveAllSettings");
       if (showMessage) {
@@ -1261,7 +1270,7 @@ ${input.transcript}
         return false;
       }
       state.lastAiError = "";
-      sessionStorage.setItem(SESSION_KEY,JSON.stringify(settings));
+      persistSettings(settings,"manual");
       setBadge(els.aiStatus,settings.aiKey ? "설정됨" : "미설정",settings.aiKey ? "ok" : "");
       state.verification.ai = false;
       refreshVerificationSummary();
@@ -1269,7 +1278,7 @@ ${input.transcript}
         setActionFeedback(
           els.aiActionFeedback,
           "설정 저장 완료 ✓",
-          "현재 브라우저 탭에 저장했습니다. 다음으로 ‘전체 연결 검증’을 눌러 주세요.",
+          "현재 브라우저 탭에 저장했습니다. 새로고침해도 경제냠냠의 예전 키로 덮어쓰지 않습니다.",
           settings.aiKey ? "success" : "warn"
         );
         button.textContent = "저장 완료 ✓";
@@ -1538,7 +1547,7 @@ ${input.transcript}
         if (model) els.aiModel.value = model;
         if (clientId) els.googleClientId.value = clientId;
         const settings = getSettings();
-        sessionStorage.setItem(SESSION_KEY,JSON.stringify(settings));
+        persistSettings(settings,"econnyam");
         setBadge(els.aiStatus,settings.aiKey ? "경제냠냠 키 적용" : "키 없음",settings.aiKey ? "ok" : "warn");
         state.verification.ai = false;
         refreshVerificationSummary();
@@ -1673,7 +1682,7 @@ ${input.transcript}
         showNotice("Google 로그인 모듈을 불러오는 중입니다. 잠시 후 다시 눌러 주세요.","error");
         return;
       }
-      sessionStorage.setItem(SESSION_KEY,JSON.stringify(settings));
+      persistSettings(settings);
       button.disabled = true;
       button.innerHTML = '<span class="spinner"></span>승인 창 여는 중...';
       setActionFeedback(els.googleActionFeedback,"Google 승인 창을 열고 있습니다.","QA PLUS Google 계정을 선택한 뒤 Blogger와 YouTube 권한을 허용해 주세요.","info",true);
@@ -1906,7 +1915,14 @@ ${input.transcript}
     });
 
     restoreSettings();
-    importEconnyamSettings(false).then(refreshVerificationSummary);
+    let initialSavedSettings = {};
+    try { initialSavedSettings = JSON.parse(sessionStorage.getItem(SESSION_KEY) || "{}"); } catch (_) {}
+    if (initialSavedSettings.aiKey && initialSavedSettings.aiKeySource !== "econnyam") {
+      $("importEconnyam").textContent = "직접 저장한 키 사용 중 ✓";
+      refreshVerificationSummary();
+    } else {
+      importEconnyamSettings(false).then(refreshVerificationSummary);
+    }
     setupPwa();
     setAppView("automation");
   </script>
