@@ -30,7 +30,12 @@ QA PLUS YouTube 대본을 Blogger용 실무 글로 변환하고 검토·발행�
 
 ## AI 설정
 
-앱은 OpenAI 호환 Chat Completions API를 사용합니다. 기본 주소는 CheapSub 게이트웨이입니다.
+앱은 OpenAI 호환 Chat Completions API를 사용합니다. 기본 주소는
+`https://qa-plus-api.gohwansok.workers.dev/v1/chat/completions`이며,
+Cloudflare Worker가 GitHub Pages 모바일 브라우저의 CORS 오류를 막고 요청을 CheapSub로 전달합니다.
+
+실사 B-roll은 CheapSub 공식 Image Generations 경로인 `/v1/images/generations`와
+`gpt-image-2` 모델을 사용합니다.
 API 키는 소스 코드에 포함되지 않고 현재 브라우저 탭의 `sessionStorage`에만 임시 저장됩니다.
 공용 PC에서는 키를 입력하지 마세요.
 

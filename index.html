@@ -13,7 +13,7 @@
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
   <meta name="description" content="QA PLUS 유튜브 대본을 Blogger 실무 콘텐츠로 변환하고 검토·발행하는 자동화 스튜디오">
   <meta name="referrer" content="strict-origin-when-cross-origin">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' 'unsafe-inline' https://accounts.google.com; connect-src https://api.cheapsub.im https://www.googleapis.com; frame-src https://accounts.google.com https://www.youtube-nocookie.com; img-src 'self' data: https:">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' 'unsafe-inline' https://accounts.google.com; connect-src https://qa-plus-api.gohwansok.workers.dev https://api.cheapsub.im https://www.googleapis.com; frame-src https://accounts.google.com https://www.youtube-nocookie.com; img-src 'self' data: https:">
   <title>QA PLUS Blog Studio</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -317,8 +317,9 @@
             </div>
             <div class="settings-fields">
               <div class="field">
-                <label for="aiEndpoint">OpenAI 호환 API 주소</label>
-                <input id="aiEndpoint" value="https://api.cheapsub.im/v1/chat/completions" autocomplete="off" spellcheck="false">
+                <label for="aiEndpoint">QA PLUS 중계 API 주소</label>
+                <input id="aiEndpoint" value="https://qa-plus-api.gohwansok.workers.dev/v1/chat/completions" autocomplete="off" spellcheck="false" readonly>
+                <p class="hint">휴대폰 브라우저의 CORS 오류를 막는 QA PLUS 전용 Cloudflare Worker가 자동 적용됩니다.</p>
               </div>
               <div class="field">
                 <label for="aiModel">글 생성 모델</label>
@@ -616,6 +617,9 @@
     const HISTORY_KEY = "qaplus-blog-studio-published";
     const ECONNYAM_BLOG_KEY = "econnyam.studio.v8";
     const ECONNYAM_STUDIO_KEY = "econnyam_settings_v2";
+    const CHEAPSUB_PROXY_ORIGIN = "https://qa-plus-api.gohwansok.workers.dev";
+    const DEFAULT_AI_ENDPOINT = `${CHEAPSUB_PROXY_ORIGIN}/v1/chat/completions`;
+    const BROLL_IMAGE_MODEL = "gpt-image-2";
     const GOOGLE_SCOPES = [
       "https://www.googleapis.com/auth/blogger",
       "https://www.googleapis.com/auth/youtube.readonly",
@@ -935,9 +939,9 @@
       })).filter((item) => item.prompt);
     }
 
-    function responsesEndpoint(endpoint) {
+    function imageGenerationsEndpoint(endpoint) {
       const url = new URL(endpoint);
-      url.pathname = url.pathname.replace(/\/chat\/completions\/?$/,"/responses");
+      url.pathname = url.pathname.replace(/\/chat\/completions\/?$/,"/images/generations");
       return url.toString();
     }
 
@@ -970,20 +974,24 @@
       try {
         for (let index=0; index<count; index += 1) {
           button.innerHTML = `<span class="spinner"></span>실사 이미지 ${index + 1}/${count}`;
-          const response = await fetch(responsesEndpoint(settings.endpoint),{
+          const response = await fetch(imageGenerationsEndpoint(settings.endpoint),{
             method:"POST",
             headers:{"Content-Type":"application/json","Authorization":`Bearer ${settings.aiKey}`},
             body:JSON.stringify({
-              model:/^gpt-/i.test(settings.model) ? settings.model : "gpt-5.6-sol",
-              input:`Generate an image. ${prompts[index].prompt}`,
-              tools:[{type:"image_generation",action:"generate"}]
+              model:BROLL_IMAGE_MODEL,
+              prompt:prompts[index].prompt,
+              n:1,
+              size:"1792x1024",
+              quality:"standard",
+              style:"natural",
+              response_format:"b64_json"
             })
           });
           const data = await response.json().catch(() => ({}));
           if (!response.ok) throw new Error(data.error?.message || `이미지 요청 실패 (${response.status})`);
-          const imageCall = (data.output || []).find((item) => item.type === "image_generation_call" && item.result);
-          if (!imageCall) throw new Error("CheapSub 응답에 이미지 데이터가 없습니다. 현재 모델의 이미지 도구 지원을 확인해 주세요.");
-          const dataUrl = `data:image/png;base64,${imageCall.result}`;
+          const imageData = data.data?.[0]?.b64_json;
+          if (!imageData) throw new Error("CheapSub 이미지 응답에 b64_json 데이터가 없습니다.");
+          const dataUrl = `data:image/png;base64,${imageData}`;
           insertBrollFigure(prompts[index],dataUrl,index);
           state.imageCount += 1;
           els.brollResult.innerHTML = `<strong>${state.imageCount}장 생성·본문 삽입 완료</strong><img src="${dataUrl}" alt="${escapeHtml(prompts[index].alt)}">`;
@@ -1232,11 +1240,24 @@ ${input.transcript}
       return true;
     }
 
+    function normalizeAiEndpoint(value = "") {
+      const raw = String(value || "").trim() || DEFAULT_AI_ENDPOINT;
+      try {
+        const url = new URL(raw);
+        if (url.hostname.toLowerCase() === "api.cheapsub.im") {
+          return `${CHEAPSUB_PROXY_ORIGIN}${url.pathname}${url.search}`;
+        }
+        return url.toString();
+      } catch (_) {
+        return raw;
+      }
+    }
+
     function getSettings() {
       let saved = {};
       try { saved = JSON.parse(sessionStorage.getItem(SESSION_KEY) || "{}"); } catch (_) {}
       return {
-        endpoint:els.aiEndpoint.value.trim() || saved.endpoint || "https://api.cheapsub.im/v1/chat/completions",
+        endpoint:normalizeAiEndpoint(els.aiEndpoint.value.trim() || saved.endpoint || DEFAULT_AI_ENDPOINT),
         model:els.aiModel.value.trim() || saved.model || "gpt-5.6-sol",
         aiKey:els.aiKey.value.trim() || saved.aiKey || "",
         clientId:els.googleClientId.value.trim() || saved.clientId || ""
@@ -1270,6 +1291,7 @@ ${input.transcript}
         return false;
       }
       state.lastAiError = "";
+      els.aiEndpoint.value = settings.endpoint;
       persistSettings(settings,"manual");
       setBadge(els.aiStatus,settings.aiKey ? "설정됨" : "미설정",settings.aiKey ? "ok" : "");
       state.verification.ai = false;
@@ -1316,14 +1338,14 @@ ${input.transcript}
         return `모델 또는 엔드포인트를 찾지 못했습니다. 원문: ${raw}`;
       }
       if (/Failed to fetch|NetworkError|Load failed/i.test(raw)) {
-        return `브라우저가 CheapSub 오류 응답을 읽지 못했습니다. 원문: ${raw}`;
+        return `QA PLUS 중계 서버의 응답을 읽지 못했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요. 원문: ${raw}`;
       }
       return raw;
     }
 
     async function probeCheapSubReachability() {
       try {
-        await fetch(`https://api.cheapsub.im/v1/models?probe=${Date.now()}`,{
+        await fetch(`${CHEAPSUB_PROXY_ORIGIN}/v1/models?probe=${Date.now()}`,{
           method:"GET",
           mode:"no-cors",
           cache:"no-store"
@@ -1374,8 +1396,8 @@ ${input.transcript}
         if (/Failed to fetch|NetworkError|Load failed/i.test(String(error.message || ""))) {
           const reachable = await probeCheapSubReachability();
           state.lastAiError = reachable
-            ? "CheapSub 서버에는 연결됩니다. 주소와 모델은 정상입니다. 키 비활성·잔액 부족 등의 오류 응답이 CORS 때문에 가려졌을 가능성이 큽니다. CheapSub 대시보드에서 키 상태와 크레딧을 확인해 주세요."
-            : "휴대폰에서 api.cheapsub.im 서버에 연결되지 않습니다. Wi-Fi·모바일 데이터 전환, VPN·광고차단 해제 후 새로고침해 주세요.";
+            ? "QA PLUS 중계 서버에는 연결되지만 CheapSub 응답이 완료되지 않았습니다. 잠시 뒤 다시 검사해 주세요."
+            : "휴대폰에서 QA PLUS 중계 서버에 연결되지 않습니다. Wi-Fi·모바일 데이터 전환, VPN·광고차단 해제 후 새로고침해 주세요.";
         } else {
           state.lastAiError = explainCheapSubError(error.message);
         }
@@ -1538,8 +1560,8 @@ ${input.transcript}
 
         if (showMessage) setActionFeedback(els.aiActionFeedback,"3/3 QA PLUS에 설정을 적용하는 중...","키는 화면 소스에 기록하지 않고 현재 탭에만 적용합니다.","info",true);
         const aiKey = blogSettings.csk || studioSettings.openaiApiKey || "";
-        const base = (blogSettings.base || studioSettings.openaiEndpoint || "https://api.cheapsub.im/v1").replace(/\/+$/,"");
-        const endpoint = /\/chat\/completions$/i.test(base) ? base : `${base}/chat/completions`;
+        const base = (blogSettings.base || studioSettings.openaiEndpoint || DEFAULT_AI_ENDPOINT).replace(/\/+$/,"");
+        const endpoint = normalizeAiEndpoint(/\/chat\/completions$/i.test(base) ? base : `${base}/chat/completions`);
         const model = blogSettings.m1 || "gpt-5.6-sol";
         const clientId = blogSettings.clientId || "";
         if (aiKey) els.aiKey.value = aiKey;
