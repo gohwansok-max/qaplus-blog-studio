@@ -225,6 +225,8 @@
     .pipeline-item.running .pipeline-item-row b{background:var(--teal);color:#fff}
     .pipeline-item.done{border-color:#a6dec1;color:var(--success)}
     .pipeline-item.done .pipeline-item-row b{background:#12a566;color:#fff}
+    .pipeline-item.warn{border-color:#f0ce78;background:#fffaf0;color:#9a6500}
+    .pipeline-item.warn .pipeline-item-row b{background:#d99500;color:#fff}
     .pipeline-item.failed{border-color:#f4b2b2;background:#fff4f4;color:var(--danger)}
     .pipeline-item.failed .pipeline-item-row b{background:var(--danger);color:#fff}
     .pipeline-stage-window{border-top:1px solid #d8e7e4;padding:14px;background:#fbfefd;color:var(--text);font-weight:400}
@@ -233,6 +235,10 @@
     .pipeline-error-output strong{display:block;margin-bottom:5px;font-size:.8rem}
     .pipeline-error-output p{margin:0;white-space:pre-wrap;word-break:break-word;font-size:.72rem;line-height:1.6}
     .pipeline-error-output small{display:block;margin-top:7px;color:#a34848;font-size:.66rem}
+    .pipeline-warning-output{padding:14px;border:1px solid #f0ce78;border-radius:10px;background:#fffaf0;color:#805500}
+    .pipeline-warning-output strong{display:block;margin-bottom:5px;font-size:.8rem}
+    .pipeline-warning-output p{margin:0;white-space:pre-wrap;word-break:break-word;font-size:.72rem;line-height:1.6}
+    .pipeline-warning-output small{display:block;margin-top:7px;color:#956d19;font-size:.66rem}
     .pipeline-stream-output{padding:13px;border:1px solid #9edacc;border-radius:10px;background:#effaf7}
     .pipeline-stream-output strong{display:block;margin-bottom:4px;color:var(--teal);font-size:.8rem}
     .pipeline-stream-output p{margin:0 0 9px;color:var(--muted);font-size:.68rem}
@@ -968,10 +974,10 @@
     function setPipelineStage(step, status, detail = "") {
       const item = document.querySelector('[data-pipeline-step="' + step + '"]');
       if (!item) return;
-      item.classList.remove("running","done","failed");
+      item.classList.remove("running","done","warn","failed");
       if (status) item.classList.add(status);
       const label = item.querySelector(".pipeline-stage-status");
-      label.textContent = detail || ({running:"진행 중",done:"완료",failed:"실패"}[status] || "대기");
+      label.textContent = detail || ({running:"진행 중",done:"완료",warn:"확인 필요",failed:"실패"}[status] || "대기");
       if (status === "running") setStep(step);
     };
 
@@ -1005,7 +1011,7 @@
     function resetPipelineUi() {
       els.pipelinePanel.hidden = false;
       document.querySelectorAll("[data-pipeline-step]").forEach((item) => {
-        item.classList.remove("running","done","failed");
+        item.classList.remove("running","done","warn","failed");
         item.querySelector(".pipeline-stage-status").textContent = "대기";
       });
       setBadge(els.pipelineOverall,"준비","warn");
@@ -1030,6 +1036,10 @@
 
     function pipelineFailureHtml(message) {
       return '<div class="pipeline-error-output"><strong>단계 실행 오류</strong><p>' + escapeHtml(message) + '</p><small>오류 내용을 확인한 뒤 “실패 단계부터 다시 실행”을 눌러 주세요.</small></div>';
+    };
+
+    function pipelineImageWarningHtml(message) {
+      return '<div class="pipeline-warning-output"><strong>본문 생성 완료 · 이미지 대기</strong><p>' + escapeHtml(message) + '</p><small>본문과 HTML은 안전하게 보존되었습니다. 잠시 후 “실패 단계부터 다시 실행”을 누르면 이미지 단계만 재시도합니다.</small></div>';
     };
 
     function pipelineStreamHtml(text, label) {
@@ -1082,10 +1092,10 @@
       const images = state.pipeline.images || [];
       els.pipelineImagesMeta.textContent = images.length
         ? images.length + "장 생성 · 이미지와 사용 프롬프트 확인"
-        : (errors[5] ? "이미지 생성 실패 원문을 표시합니다." : "생성된 이미지와 사용한 프롬프트를 함께 확인합니다.");
+        : (errors[5] ? "이미지 공급자 일시 장애 · 본문 결과는 보존됨" : "생성된 이미지와 사용한 프롬프트를 함께 확인합니다.");
       els.pipelineImages.innerHTML = images.length ? images.map((item,index) =>
         '<article class="pipeline-image-card"><img src="' + escapeHtml(item.url) + '" alt="' + escapeHtml(item.alt || (index + 1) + "번 이미지") + '"><div><strong>' + escapeHtml(item.alt || (index + 1) + "번 이미지") + '</strong><p>' + escapeHtml(item.prompt || "프롬프트 정보 없음") + '</p></div></article>'
-      ).join("") : (errors[5] ? pipelineFailureHtml(errors[5]) : '<p class="help">아직 결과가 없습니다.</p>');
+      ).join("") : (errors[5] ? pipelineImageWarningHtml(errors[5]) : '<p class="help">아직 결과가 없습니다.</p>');
       setPipelineResultReady(5,Boolean(images.length || errors[5]));
     };
     function cheapSubEndpoint(chatEndpoint, path) {
@@ -1714,16 +1724,46 @@
       state.post.html = els.htmlEditor.value;
     };
 
+    function normalizeImageServiceError(message, status = 0) {
+      const raw = String(message || "").trim();
+      const requestId = raw.match(/request_id\s*:\s*([A-Za-z0-9_-]+)/i)?.[1] || "";
+      const suffix = requestId ? " (요청 ID: " + requestId + ")" : "";
+      if (/^이미지 (?:공급자의|생성 호출|API 인증|서버에|생성 요청|생성 응답)/.test(raw)) return raw;
+      if (/上游服务|网络链路|代理返回异常响应|请稍后重试|智能路由|固定商家/.test(raw) || status >= 500) {
+        return "이미지 공급자의 상위 서비스가 일시적으로 응답하지 않습니다. 본문은 보존되었으니 잠시 후 이미지 단계만 다시 실행해 주세요." + suffix;
+      }
+      if (status === 429 || /rate.?limit|quota|credit|balance|调用限制|额度/i.test(raw)) {
+        return "이미지 생성 호출 한도 또는 잔액을 확인해 주세요. 본문은 보존되어 있습니다." + suffix;
+      }
+      if (status === 401 || status === 403 || /unauthorized|forbidden|invalid.*(?:key|token)|authentication/i.test(raw)) {
+        return "이미지 API 인증에 실패했습니다. 설정·검증에서 CheapSub 키를 확인해 주세요." + suffix;
+      }
+      if (/Failed to fetch|NetworkError|Load failed|fetch failed/i.test(raw)) {
+        return "이미지 서버에 연결하지 못했습니다. 네트워크 상태를 확인한 뒤 이미지 단계만 다시 실행해 주세요.";
+      }
+      return raw
+        ? "이미지 생성 요청을 완료하지 못했습니다. 본문은 보존되었습니다. 잠시 후 이미지 단계만 다시 실행해 주세요." + suffix
+        : "이미지 생성 응답을 받지 못했습니다. 본문은 보존되었습니다. 잠시 후 이미지 단계만 다시 실행해 주세요.";
+    };
+
     async function requestBrollImage(settings, item) {
-      const response = await fetch(cheapSubEndpoint(settings.endpoint,"images/generations"),{
-        method:"POST",
-        headers:{"Content-Type":"application/json","Authorization":"Bearer " + settings.aiKey},
-        body:JSON.stringify({model:settings.imageModel,prompt:item.prompt,n:1,size:"1792x1024",quality:"hd",style:"natural",response_format:"url"})
-      });
+      let response;
+      try {
+        response = await fetch(cheapSubEndpoint(settings.endpoint,"images/generations"),{
+          method:"POST",
+          headers:{"Content-Type":"application/json","Authorization":"Bearer " + settings.aiKey},
+          body:JSON.stringify({model:settings.imageModel,prompt:item.prompt,n:1,size:"1792x1024",quality:"hd",style:"natural",response_format:"url"})
+        });
+      } catch (error) {
+        throw new Error(normalizeImageServiceError(error?.message || error));
+      }
       const raw = await response.text();
       let data;
       try { data = JSON.parse(raw); } catch (_) { data = {}; }
-      if (!response.ok) throw new Error((data.error && data.error.message) || "이미지 요청 실패 (" + response.status + "): " + raw.slice(0,220));
+      if (!response.ok) {
+        const upstreamMessage = (data.error && data.error.message) || raw.slice(0,500);
+        throw new Error(normalizeImageServiceError(upstreamMessage,response.status));
+      }
       const image = data.data && data.data[0];
       if (!image) throw new Error("CheapSub 이미지 응답에 data[0]이 없습니다.");
       const candidate = image.proxy_url || image.url || image.download_url;
@@ -1778,9 +1818,11 @@
         if (!fromPipeline) showNotice("QA PLUS 실사 B-roll 이미지 " + count + "장을 만들고 본문에 삽입했습니다.","success");
         return state.imageCount;
       } catch (error) {
+        const safeMessage = normalizeImageServiceError(error?.message || error);
+        if (error && typeof error === "object") error.message = safeMessage;
         setBadge(els.brollStatus,"생성 확인 필요","warn");
-        els.brollResult.textContent = error.message;
-        if (!fromPipeline) showNotice(error.message,"error");
+        els.brollResult.textContent = safeMessage;
+        if (!fromPipeline) showNotice(safeMessage,"error");
         if (propagate) throw error;
         return 0;
       } finally {
@@ -2099,16 +2141,24 @@ ${input.transcript}
       } catch (error) {
         console.error("Five-stage pipeline failed",error);
         state.pipeline.failedStep = activeStep;
-        state.lastAiError = error.message;
+        const errorMessage = activeStep === 5 ? normalizeImageServiceError(error?.message || error) : String(error?.message || error);
+        state.lastAiError = errorMessage;
         state.pipeline.stageErrors = state.pipeline.stageErrors || {};
-        state.pipeline.stageErrors[activeStep] = error.message;
+        state.pipeline.stageErrors[activeStep] = errorMessage;
         updatePipelineOutputs();
-        setPipelineStage(activeStep,"failed","원인 확인·재시도");
         const errorPanel = typeof document !== "undefined" ? document.getElementById("pipelineResult" + activeStep) : null;
         if (errorPanel && errorPanel.hidden) togglePipelineResult(activeStep);
-        setBadge(els.pipelineOverall,activeStep + "단계 실패","warn");
         els.retryPipeline.hidden = false;
-        showNotice(activeStep + "단계에서 중단됐습니다: " + error.message,"error");
+        if (activeStep === 5 && state.pipeline.expanded) {
+          setPipelineStage(5,"warn","이미지 대기·재시도 가능");
+          setBadge(els.pipelineOverall,"본문 생성 완료·이미지 대기","warn");
+          setStep(4);
+          showNotice("본문 생성은 완료되었습니다. " + errorMessage,"info");
+        } else {
+          setPipelineStage(activeStep,"failed","원인 확인·재시도");
+          setBadge(els.pipelineOverall,activeStep + "단계 실패","warn");
+          showNotice(activeStep + "단계에서 중단됐습니다: " + errorMessage,"error");
+        }
       } finally {
         state.pipeline.running = false;
         setBusy(false);
