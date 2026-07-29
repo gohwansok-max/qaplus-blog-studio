@@ -696,18 +696,16 @@
       button.disabled = true;
       button.classList.add("refreshing");
       button.innerHTML = '<span class="refresh-icon" aria-hidden="true">↻</span><span class="refresh-label">업데이트 중</span>';
-      try {
-        if ("serviceWorker" in navigator) {
-          const registration = await navigator.serviceWorker.getRegistration("./");
+      if ("serviceWorker" in navigator) {
+        try {
+          const registration = await navigator.serviceWorker.getRegistration();
           if (registration) await registration.update();
-        }
-        await new Promise((resolve) => window.setTimeout(resolve,350));
-        const refreshedUrl = new URL(window.location.href);
-        refreshedUrl.searchParams.set("appRefresh",Date.now().toString());
-        window.location.replace(refreshedUrl.toString());
-      } catch (_) {
-        window.location.reload();
+        } catch (_) {}
       }
+      await new Promise((resolve) => window.setTimeout(resolve,350));
+      const refreshedUrl = new URL(window.location.href);
+      refreshedUrl.searchParams.set("appRefresh",Date.now().toString());
+      window.location.replace(refreshedUrl.toString());
     }
 
     function setupPwa() {
