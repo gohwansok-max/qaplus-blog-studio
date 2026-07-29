@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">QA PLUS</title>
+  <desc id="desc">네이비와 청록색 배경 위에 흰색 QA와 민트색 더하기 기호가 있는 앱 아이콘</desc>
+  <defs>
+    <linearGradient id="bg" x1="52" y1="40" x2="470" y2="472" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0b1f33"/>
+      <stop offset=".52" stop-color="#0b5061"/>
+      <stop offset="1" stop-color="#087f78"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientTransform="translate(396 102) rotate(135) scale(238)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#71e1c3" stop-opacity=".48"/>
+      <stop offset="1" stop-color="#71e1c3" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="18" stdDeviation="16" flood-color="#001722" flood-opacity=".34"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="116" fill="url(#bg)"/>
+  <rect width="512" height="512" rx="116" fill="url(#glow)"/>
+  <path d="M64 182h384M64 330h384M182 64v384M330 64v384" stroke="#dff9f1" stroke-opacity=".055" stroke-width="2"/>
+  <rect x="72" y="72" width="368" height="368" rx="94" fill="#fff" fill-opacity=".055" stroke="#dff9f1" stroke-opacity=".18" stroke-width="3"/>
+  <g filter="url(#shadow)">
+    <path fill="#fff" fill-rule="evenodd" d="M176 150c-62 0-101 42-101 105s39 106 101 106c15 0 29-3 41-8l23 23 32-32-19-19c15-18 24-42 24-70 0-63-39-105-101-105Zm0 51c29 0 47 21 47 54 0 12-2 22-7 31l-19-19-32 32 12 12h-1c-29 0-47-22-47-56 0-33 18-54 47-54Z"/>
+    <path fill="#fff" d="M324 151h61l73 209h-58l-13-43h-70l-13 43h-57l77-209Zm28 54-22 70h44l-22-70Z"/>
+    <path fill="#71e1c3" d="M420 172h29v36h36v29h-36v36h-29v-36h-36v-29h36v-36Z"/>
+  </g>
+  <circle cx="407" cy="405" r="8" fill="#71e1c3"/>
+  <circle cx="431" cy="405" r="8" fill="#71e1c3" fill-opacity=".55"/>
+</svg>

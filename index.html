@@ -4,6 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#0b1f33">
+  <meta name="application-name" content="QA PLUS Blog Studio">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="QA+ Studio">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icons/qa-plus-icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
   <meta name="description" content="QA PLUS 유튜브 대본을 Blogger 실무 콘텐츠로 변환하고 검토·발행하는 자동화 스튜디오">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' 'unsafe-inline' https://accounts.google.com; connect-src https://api.cheapsub.im https://www.googleapis.com; frame-src https://accounts.google.com https://www.youtube-nocookie.com; img-src 'self' data: https:">
@@ -51,6 +58,8 @@
     .top-links a{padding:9px 12px;border-radius:10px;color:#3b4c58;font-size:.86rem;font-weight:800}
     .top-links a:hover{background:var(--mint-soft);color:var(--teal)}
     .top-links .youtube{background:#fff0f0;color:#c62c2c}
+    .install-btn{min-height:36px;border:1px solid #a8ded5;border-radius:10px;padding:7px 11px;background:var(--mint-soft);color:var(--teal);font-size:.76rem;font-weight:900}
+    .install-btn:hover{border-color:var(--teal);background:#d9f4ec}
     .hero{padding:54px 0 38px;background:radial-gradient(circle at 86% 25%,rgba(92,208,173,.2),transparent 29%),linear-gradient(135deg,var(--navy),var(--navy-2) 56%,#09645f);color:#fff}
     .hero-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(280px,.55fr);gap:42px;align-items:center}
     .eyebrow{display:inline-flex;align-items:center;gap:8px;margin:0 0 15px;color:#baf1e1;font-size:.77rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase}
@@ -220,6 +229,7 @@
       <nav class="top-links" aria-label="빠른 연결">
         <a href="https://qaplus-haccp.blogspot.com/" target="_blank" rel="noopener noreferrer">블로그</a>
         <a href="https://drive.google.com/drive/folders/1tHqeagzD__Oqjc027TVJhcWQC0JkOIV6?usp=sharing" target="_blank" rel="noopener noreferrer">무료자료</a>
+        <button id="pwaInstall" class="install-btn" type="button" hidden>앱 설치</button>
         <a class="youtube" href="https://youtube.com/@qaplus_haccp?si=2eoN3yuYCoDBpLru" target="_blank" rel="noopener noreferrer">YouTube</a>
       </nav>
     </div>
@@ -621,6 +631,7 @@
       youtubeOwned: false,
       imageCount: 0,
       busy: false,
+      installPrompt:null,
       verification:{settings:false,ai:false,google:false,blogger:false,youtube:false,links:true,checking:false}
     };
 
@@ -643,8 +654,35 @@
       verifyAiDetail:$("verifyAiDetail"), verifyGoogleStatus:$("verifyGoogleStatus"),
       verifyGoogleDetail:$("verifyGoogleDetail"), verifyBloggerStatus:$("verifyBloggerStatus"),
       verifyYoutubeStatus:$("verifyYoutubeStatus"), verifyLinksStatus:$("verifyLinksStatus"),
-      verificationMessage:$("verificationMessage"), verifyAllConnections:$("verifyAllConnections")
+      verificationMessage:$("verificationMessage"), verifyAllConnections:$("verifyAllConnections"), pwaInstall:$("pwaInstall")
     };
+
+    function setupPwa() {
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load",() => {
+          navigator.serviceWorker.register("./sw.js",{scope:"./"})
+            .catch((error) => console.warn("PWA service worker registration failed",error));
+        });
+      }
+      window.addEventListener("beforeinstallprompt",(event) => {
+        event.preventDefault();
+        state.installPrompt = event;
+        els.pwaInstall.hidden = false;
+      });
+      els.pwaInstall.addEventListener("click",async () => {
+        if (!state.installPrompt) return;
+        state.installPrompt.prompt();
+        const choice = await state.installPrompt.userChoice;
+        state.installPrompt = null;
+        els.pwaInstall.hidden = true;
+        if (choice.outcome === "accepted") showNotice("QA PLUS Blog Studio 설치를 시작했습니다.","success");
+      });
+      window.addEventListener("appinstalled",() => {
+        state.installPrompt = null;
+        els.pwaInstall.hidden = true;
+        showNotice("QA PLUS Blog Studio가 앱으로 설치되었습니다.","success");
+      });
+    }
 
     function showNotice(message, type = "info") {
       els.notice.className = `notice show ${type}`;
@@ -1595,6 +1633,7 @@ ${input.transcript}
 
     restoreSettings();
     importEconnyamSettings(false).then(refreshVerificationSummary);
+    setupPwa();
     setAppView("automation");
   </script>
 </body>
