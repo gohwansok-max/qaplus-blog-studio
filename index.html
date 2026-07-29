@@ -233,6 +233,10 @@
     .pipeline-error-output strong{display:block;margin-bottom:5px;font-size:.8rem}
     .pipeline-error-output p{margin:0;white-space:pre-wrap;word-break:break-word;font-size:.72rem;line-height:1.6}
     .pipeline-error-output small{display:block;margin-top:7px;color:#a34848;font-size:.66rem}
+    .pipeline-stream-output{padding:13px;border:1px solid #9edacc;border-radius:10px;background:#effaf7}
+    .pipeline-stream-output strong{display:block;margin-bottom:4px;color:var(--teal);font-size:.8rem}
+    .pipeline-stream-output p{margin:0 0 9px;color:var(--muted);font-size:.68rem}
+    .pipeline-stream-output .pipeline-text-output{max-height:420px}
     .pipeline-window-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:10px}
     .pipeline-window-head strong{display:block;color:var(--navy);font-size:.82rem}
     .pipeline-window-head small{display:block;margin-top:3px;color:var(--muted);font-size:.68rem}
@@ -364,7 +368,7 @@
               <div class="field">
                 <label for="aiEndpoint">QA PLUS 중계 API 주소</label>
                 <input id="aiEndpoint" value="https://qa-plus-api.gohwansok.workers.dev/v1/chat/completions" autocomplete="off" spellcheck="false" readonly>
-                <p class="hint">휴대폰 브라우저의 CORS 오류를 막는 QA PLUS 전용 Cloudflare Worker가 자동 적용됩니다.</p>
+                <p class="hint">ChatGPT 분석과 OpenAI 이미지는 QA PLUS 중계를 사용합니다. Claude 글쓰기는 경제냠냠처럼 CheapSub 직접 SSE 스트리밍을 우선 사용합니다.</p>
               </div>
               <div class="field">
                 <label for="aiModel">ChatGPT 분석 모델</label>
@@ -373,7 +377,7 @@
               <div class="field">
                 <label for="claudeModel">Claude 작성·확장 모델</label>
                 <input id="claudeModel" value="claude-opus-5" autocomplete="off" spellcheck="false">
-                <p class="hint">Opus는 크레딧 사용량과 응답 시간이 큽니다. HTTP 524 시간초과가 발생하면 앱이 <strong>claude-sonnet-5</strong>로 자동 전환합니다. HTTP 402가 표시되면 크레딧을 확인해 주세요.</p>
+                <p class="hint">경제냠냠과 동일하게 Claude는 CheapSub에 직접 SSE 스트리밍으로 연결합니다. 직접 연결이 막힐 때만 QA PLUS 중계를 사용하며, Opus가 반복적으로 524일 때만 <strong>claude-sonnet-5</strong>를 최종 예비 모델로 사용합니다.</p>
               </div>
               <div class="field">
                 <label for="imageModel">OpenAI 이미지 모델</label>
@@ -790,7 +794,7 @@
       busy: false,
       installPrompt:null,
       lastAiError:"",
-      pipeline:{transcript:"",analysis:null,draft:null,expanded:null,images:[],stageErrors:{},failedStep:0,running:false,inputFingerprint:"",warning:""},
+      pipeline:{transcript:"",analysis:null,draft:null,expanded:null,images:[],stageErrors:{},stageStreams:{},failedStep:0,running:false,inputFingerprint:"",warning:""},
       verification:{settings:false,ai:false,gemini:false,google:false,blogger:false,youtube:false,links:true,checking:false}
     };
 
@@ -1014,7 +1018,7 @@
     };
 
     function clearPipelineState(input) {
-      state.pipeline = {transcript:"",analysis:null,draft:null,expanded:null,images:[],stageErrors:{},failedStep:0,running:false,inputFingerprint:pipelineFingerprint(input),warning:""};
+      state.pipeline = {transcript:"",analysis:null,draft:null,expanded:null,images:[],stageErrors:{},stageStreams:{},failedStep:0,running:false,inputFingerprint:pipelineFingerprint(input),warning:""};
       resetPipelineUi();
       setStep(1);
     };
@@ -1028,8 +1032,13 @@
       return '<div class="pipeline-error-output"><strong>단계 실행 오류</strong><p>' + escapeHtml(message) + '</p><small>오류 내용을 확인한 뒤 “실패 단계부터 다시 실행”을 눌러 주세요.</small></div>';
     };
 
+    function pipelineStreamHtml(text, label) {
+      return '<div class="pipeline-stream-output"><strong>' + escapeHtml(label) + ' 실시간 작성 중</strong><p>경제냠냠과 같은 SSE 스트리밍으로 도착한 글을 조립하고 있습니다.</p><pre class="pipeline-text-output">' + escapeHtml(String(text || "").slice(-60000)) + '</pre></div>';
+    };
+
     function updatePipelineOutputs() {
       const errors = state.pipeline.stageErrors || {};
+      const streams = state.pipeline.stageStreams || {};
       const transcript = state.pipeline.transcript || "";
       els.pipelineTranscript.textContent = transcript || (errors[1] ? "1단계 오류\n" + errors[1] : "아직 결과가 없습니다.");
       els.pipelineTranscriptMeta.textContent = transcript
@@ -1046,27 +1055,29 @@
       setPipelineResultReady(2,Boolean(analysis || errors[2]));
 
       const draft = state.pipeline.draft;
+      const draftStream = streams[3] || "";
       const draftLength = draft ? visibleTextLength(draft.html) : 0;
-      els.pipelineDraft.textContent = draft ? pipelinePostSource(draft) : (errors[3] ? "3단계 오류\n" + errors[3] : "아직 결과가 없습니다.");
+      els.pipelineDraft.textContent = draft ? pipelinePostSource(draft) : (errors[3] ? "3단계 오류\n" + errors[3] : (draftStream || "아직 결과가 없습니다."));
       els.pipelineDraftPreview.innerHTML = draft
         ? '<h1>' + escapeHtml(draft.title) + '</h1>' + sanitizePostHtml(draft.html)
-        : (errors[3] ? pipelineFailureHtml(errors[3]) : "아직 결과가 없습니다.");
+        : (errors[3] ? pipelineFailureHtml(errors[3]) : (draftStream ? pipelineStreamHtml(draftStream,"Claude 1차 기본 글") : "아직 결과가 없습니다."));
       els.pipelineDraftMeta.textContent = draft
         ? "기본 글 " + draftLength.toLocaleString("ko-KR") + "자 · 제목·본문 렌더링 미리보기"
-        : (errors[3] ? "Claude 1차 실패 원문 · HTTP 상태와 해결 방법 확인" : "기본 글이 완성되면 실제 글 형태로 표시합니다.");
-      setPipelineResultReady(3,Boolean(draft || errors[3]));
+        : (errors[3] ? "Claude 1차 실패 원문 · HTTP 상태와 해결 방법 확인" : (draftStream ? "Opus SSE 스트리밍 · " + draftStream.length.toLocaleString("ko-KR") + "자 수신" : "기본 글이 완성되면 실제 글 형태로 표시합니다."));
+      setPipelineResultReady(3,Boolean(draft || errors[3] || draftStream));
 
       const expanded = state.pipeline.expanded;
+      const expandedStream = streams[4] || "";
       const expandedLength = expanded ? visibleTextLength(expanded.html) : 0;
       const tableCount = expanded ? (expanded.html.match(/<table[\s>]/gi) || []).length : 0;
-      els.pipelineExpanded.textContent = expanded ? pipelinePostSource(expanded) : (errors[4] ? "4단계 오류\n" + errors[4] : "아직 결과가 없습니다.");
+      els.pipelineExpanded.textContent = expanded ? pipelinePostSource(expanded) : (errors[4] ? "4단계 오류\n" + errors[4] : (expandedStream || "아직 결과가 없습니다."));
       els.pipelineExpandedPreview.innerHTML = expanded
         ? '<h1>' + escapeHtml(expanded.title) + '</h1>' + sanitizePostHtml(expanded.html)
-        : (errors[4] ? pipelineFailureHtml(errors[4]) : "아직 결과가 없습니다.");
+        : (errors[4] ? pipelineFailureHtml(errors[4]) : (expandedStream ? pipelineStreamHtml(expandedStream,"Claude 2차 확장 글") : "아직 결과가 없습니다."));
       els.pipelineExpandedMeta.textContent = expanded
         ? "최종 " + expandedLength.toLocaleString("ko-KR") + "자 · 1차 대비 " + Math.max(0,expandedLength - draftLength).toLocaleString("ko-KR") + "자 증가 · 표 " + tableCount + "개"
-        : (errors[4] ? "Claude 2차 실패 원문 · HTTP 상태와 해결 방법 확인" : "1차 글에서 얼마나 길어졌는지와 표 개수를 표시합니다.");
-      setPipelineResultReady(4,Boolean(expanded || errors[4]));
+        : (errors[4] ? "Claude 2차 실패 원문 · HTTP 상태와 해결 방법 확인" : (expandedStream ? "Opus SSE 스트리밍 · " + expandedStream.length.toLocaleString("ko-KR") + "자 수신" : "1차 글에서 얼마나 길어졌는지와 표 개수를 표시합니다."));
+      setPipelineResultReady(4,Boolean(expanded || errors[4] || expandedStream));
 
       const images = state.pipeline.images || [];
       els.pipelineImagesMeta.textContent = images.length
@@ -1098,68 +1109,175 @@
       return content;
     };
 
-    async function callClaude(settings, prompt, maxTokens = 12000, onRetry = null) {
-      const endpoint = cheapSubEndpoint(settings.endpoint,"messages");
+    async function callClaude(settings, prompt, maxTokens = 12000, onProgress = null, onChunk = null) {
+      const directEndpoint = "https://api.cheapsub.im/v1/messages";
+      const proxyEndpoint = cheapSubEndpoint(settings.endpoint,"messages");
       const safeMaxTokens = Math.max(256,Math.min(Number(maxTokens) || 12000,16000));
-      const retryDelays = [0,1200,2600];
-      let activeModel = settings.claudeModel || "claude-sonnet-5";
+      const retryDelays = [0,1500,3500];
+      let activeEndpoint = directEndpoint;
+      let activeModel = settings.claudeModel || "claude-opus-5";
+      let usedProxyFallback = false;
       let usedTimeoutFallback = false;
+      let opusTimeouts = 0;
+
+      function report(message) {
+        if (typeof onProgress === "function") onProgress(message);
+      };
+
+      function parseClaudeJson(raw) {
+        let data;
+        try { data = JSON.parse(raw); } catch (_) { throw new Error("Claude API 응답 자체가 JSON 형식이 아닙니다. 원문: " + raw.slice(0,300)); }
+        const content = (data.content || []).filter((item) => item && item.type === "text").map((item) => item.text).join("\n").trim();
+        return {content,stopReason:data.stop_reason || ""};
+      };
+
+      async function readClaudeSuccess(response) {
+        const contentType = response.headers?.get?.("content-type") || "";
+        if (!/text\/event-stream/i.test(contentType) || !response.body?.getReader) {
+          return parseClaudeJson(await response.text());
+        }
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let content = "";
+        let stopReason = "";
+        let streamError = "";
+        let lastChunkAt = 0;
+        let lastProgressAt = 0;
+
+        function consumeLine(rawLine) {
+          const line = rawLine.replace(/\r$/,"");
+          if (!line.startsWith("data:")) return;
+          const payload = line.slice(5).trimStart();
+          if (!payload || payload === "[DONE]") return;
+          let event;
+          try { event = JSON.parse(payload); } catch (_) { return; }
+          if (event.type === "error" || event.error) {
+            streamError = event.error?.message || event.message || "알 수 없는 스트림 오류";
+            return;
+          }
+          if (event.type === "message_delta") stopReason = event.delta?.stop_reason || event.stop_reason || stopReason;
+          if (event.type === "message_stop") stopReason = event.stop_reason || stopReason || "end_turn";
+          let delta = "";
+          if (event.type === "content_block_delta" && typeof event.delta?.text === "string") delta = event.delta.text;
+          else if (event.type === "content_block_start" && typeof event.content_block?.text === "string") delta = event.content_block.text;
+          if (!delta) return;
+          content += delta;
+          const now = Date.now();
+          if (typeof onChunk === "function" && now - lastChunkAt >= 220) {
+            lastChunkAt = now;
+            onChunk(content,activeModel);
+          }
+          if (now - lastProgressAt >= 900) {
+            lastProgressAt = now;
+            report((/opus/i.test(activeModel) ? "Opus 5" : "Sonnet 5") + " 스트리밍 작성 중 · " + content.length.toLocaleString("ko-KR") + "자");
+          }
+        };
+
+        while (true) {
+          const {done,value} = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value,{stream:true});
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+          lines.forEach(consumeLine);
+        }
+        buffer += decoder.decode();
+        if (buffer.trim()) buffer.split("\n").forEach(consumeLine);
+        if (streamError) throw new Error("Claude 스트림 오류: " + streamError);
+        if (typeof onChunk === "function") onChunk(content,activeModel);
+        return {content:content.trim(),stopReason:stopReason || "end_turn"};
+      };
+
       for (let attempt=0; attempt<retryDelays.length; attempt += 1) {
         let response;
         try {
-          response = await fetch(endpoint,{
+          report((/opus/i.test(activeModel) ? "Opus 5" : "Sonnet 5") + (activeEndpoint === directEndpoint ? " 직접 스트리밍 연결 중" : " 중계 스트리밍 연결 중"));
+          response = await fetch(activeEndpoint,{
             method:"POST",
             headers:{"Content-Type":"application/json","x-api-key":settings.aiKey,"anthropic-version":"2023-06-01"},
-            body:JSON.stringify({model:activeModel,max_tokens:safeMaxTokens,messages:[{role:"user",content:prompt}]})
+            body:JSON.stringify({model:activeModel,max_tokens:safeMaxTokens,messages:[{role:"user",content:prompt}],stream:true})
           });
         } catch (error) {
+          if (activeEndpoint === directEndpoint && proxyEndpoint !== directEndpoint && !usedProxyFallback && attempt < retryDelays.length - 1) {
+            activeEndpoint = proxyEndpoint;
+            usedProxyFallback = true;
+            report("CheapSub 직접 연결 실패 → QA PLUS 중계 스트리밍 전환");
+            await new Promise((resolve) => window.setTimeout(resolve,400));
+            continue;
+          }
           if (attempt < retryDelays.length - 1) {
-            if (typeof onRetry === "function") onRetry("네트워크 오류 · 자동 재시도 " + (attempt + 1) + "/2");
+            report("Claude 스트리밍 네트워크 오류 · 자동 재시도 " + (attempt + 1) + "/2");
             await new Promise((resolve) => window.setTimeout(resolve,retryDelays[attempt + 1]));
             continue;
           }
-          throw new Error("Claude 네트워크 요청이 3회 실패했습니다. QA PLUS 중계 서버 연결을 확인해 주세요. 원문: " + error.message);
+          throw new Error("Claude 스트리밍 연결이 3회 실패했습니다. 원문: " + error.message);
         }
-        const raw = await response.text();
+
         if (!response.ok) {
+          const raw = await response.text();
           let apiMessage = raw.slice(0,500).replace(/\s+/g," ").trim();
           try {
             const errorData = JSON.parse(raw);
             apiMessage = errorData.error?.message || errorData.message || apiMessage;
           } catch (_) {}
-          if (response.status === 524 && /claude-opus/i.test(activeModel) && !usedTimeoutFallback && attempt < retryDelays.length - 1) {
-            activeModel = "claude-sonnet-5";
-            usedTimeoutFallback = true;
-            if (typeof onRetry === "function") onRetry("Claude Opus 시간초과 → Sonnet 자동 전환");
-            await new Promise((resolve) => window.setTimeout(resolve,400));
-            continue;
+          if (response.status === 524 && /claude-opus/i.test(activeModel)) {
+            opusTimeouts += 1;
+            if (opusTimeouts === 1 && !usedProxyFallback && attempt < retryDelays.length - 1) {
+              report("Claude Opus 524 · 직접 스트리밍 재시도 1/2");
+              await new Promise((resolve) => window.setTimeout(resolve,900));
+              continue;
+            }
+            if (!usedTimeoutFallback && attempt < retryDelays.length - 1) {
+              activeModel = "claude-sonnet-5";
+              usedTimeoutFallback = true;
+              report("Opus 스트리밍 524 반복 → Sonnet 최종 예비 전환");
+              await new Promise((resolve) => window.setTimeout(resolve,500));
+              continue;
+            }
           }
           const retryable = response.status === 408 || response.status === 409 || response.status === 425 || response.status === 429 || response.status >= 500;
           if (retryable && attempt < retryDelays.length - 1) {
-            if (typeof onRetry === "function") onRetry("Claude " + response.status + " · 자동 재시도 " + (attempt + 1) + "/2");
+            report("Claude " + response.status + " · 스트리밍 자동 재시도 " + (attempt + 1) + "/2");
             await new Promise((resolve) => window.setTimeout(resolve,retryDelays[attempt + 1]));
             continue;
           }
           let guidance = "";
           if (response.status === 401 || response.status === 403) guidance = " CheapSub 키와 Claude 모델 권한을 확인해 주세요.";
-          else if (response.status === 402) guidance = " CheapSub 크레딧이 부족합니다. Claude Opus 호출 가능 잔액을 충전하거나 더 저렴한 Claude 모델을 선택해 주세요.";
+          else if (response.status === 402) guidance = " CheapSub 크레딧이 부족합니다. 잔액을 확인해 주세요.";
           else if (response.status === 404) guidance = " 설정의 Claude 모델명이 현재 CheapSub 지원 목록에 있는지 확인해 주세요.";
           else if (response.status === 429) guidance = " 호출 제한에 도달했습니다. 잠시 후 실패 단계부터 다시 실행해 주세요.";
           else if (response.status === 524) guidance = usedTimeoutFallback
-            ? " Claude Opus 시간초과 뒤 Sonnet으로 자동 전환했지만 상류 서버가 다시 시간초과했습니다. 잠시 후 실패 단계부터 다시 실행해 주세요."
-            : " Claude 상류 서버의 응답 시간초과입니다. Opus를 사용 중이면 앱이 Sonnet 자동 전환을 시도합니다.";
+            ? " Opus 직접 스트리밍과 Sonnet 예비 전환까지 시간초과했습니다. CheapSub 상류 상태가 회복된 뒤 다시 실행해 주세요."
+            : " Opus 스트리밍 요청이 상류 서버에서 시간초과했습니다.";
           else if (response.status >= 500) guidance = " CheapSub 상류 Claude 서버 오류입니다. 실패 요청은 문서상 크레딧이 차감되지 않습니다.";
-          else if (response.status === 400 && /max.?tokens|token.*limit|too.*long|context/i.test(apiMessage)) guidance = " Claude 출력·입력 한도를 넘었습니다. 이번 버전은 1차 글 요청을 더 작게 보내도록 조정했습니다.";
+          else if (response.status === 400 && /max.?tokens|token.*limit|too.*long|context/i.test(apiMessage)) guidance = " Claude 출력·입력 한도를 넘었습니다.";
           throw new Error("Claude 요청 실패 (HTTP " + response.status + ")." + guidance + " 원문: " + apiMessage);
         }
-        let data;
-        try { data = JSON.parse(raw); } catch (_) { throw new Error("Claude API 응답 자체가 JSON 형식이 아닙니다. 원문: " + raw.slice(0,300)); }
-        const content = (data.content || []).filter((item) => item && item.type === "text").map((item) => item.text).join("\n").trim();
-        if (!content) throw new Error("Claude 응답 본문이 비어 있습니다. stop_reason: " + (data.stop_reason || "없음"));
-        if (data.stop_reason === "max_tokens") throw new Error("Claude 출력이 max_tokens에서 잘렸습니다. 1차 글 요청 크기를 줄였으니 실패 단계부터 다시 실행해 주세요.");
-        return content;
+
+        let result;
+        try {
+          result = await readClaudeSuccess(response);
+        } catch (error) {
+          if (activeEndpoint === directEndpoint && proxyEndpoint !== directEndpoint && !usedProxyFallback && attempt < retryDelays.length - 1) {
+            activeEndpoint = proxyEndpoint;
+            usedProxyFallback = true;
+            report("CheapSub 직접 스트림 중단 → QA PLUS 중계 스트리밍 전환");
+            await new Promise((resolve) => window.setTimeout(resolve,400));
+            continue;
+          }
+          if (attempt < retryDelays.length - 1) {
+            report("Claude 스트림 중단 · 자동 재시도 " + (attempt + 1) + "/2");
+            await new Promise((resolve) => window.setTimeout(resolve,retryDelays[attempt + 1]));
+            continue;
+          }
+          throw error;
+        }
+        if (!result.content) throw new Error("Claude 스트리밍 응답 본문이 비어 있습니다. stop_reason: " + (result.stopReason || "없음"));
+        if (result.stopReason === "max_tokens") throw new Error("Claude 출력이 max_tokens에서 잘렸습니다. 실패 단계부터 다시 실행해 주세요.");
+        return result.content;
       }
-      throw new Error("Claude 요청을 완료하지 못했습니다.");
+      throw new Error("Claude 스트리밍 요청을 완료하지 못했습니다.");
     };
 
     function collectGeminiText(value, output = []) {
@@ -1713,6 +1831,7 @@ ${input.transcript}
       state.pipeline.running = true;
       state.pipeline.failedStep = 0;
       state.pipeline.stageErrors = state.pipeline.stageErrors || {};
+      state.pipeline.stageStreams = state.pipeline.stageStreams || {};
       els.retryPipeline.hidden = true;
       setBusy(true,"1/5 Gemini 대본 추출 중...");
       let activeStep = startStep;
@@ -1744,11 +1863,19 @@ ${input.transcript}
         if (startStep <= 3) {
           activeStep = 3;
           delete state.pipeline.stageErrors[3];
+          delete state.pipeline.stageStreams[3];
           updatePipelineOutputs();
           setBusy(true,"3/5 Claude 1차 기본 글 작성 중...");
-          setPipelineStage(3,"running","기본 글 작성 중");
-          const draftRaw = await callClaude(settings,buildClaudeDraftPrompt(input,state.pipeline.transcript,state.pipeline.analysis),8000,(detail) => setPipelineStage(3,"running",detail));
+          setPipelineStage(3,"running","Opus 직접 스트리밍 연결 중");
+          const draftRaw = await callClaude(
+            settings,
+            buildClaudeDraftPrompt(input,state.pipeline.transcript,state.pipeline.analysis),
+            8000,
+            (detail) => setPipelineStage(3,"running",detail),
+            (chunk) => { state.pipeline.stageStreams[3] = chunk; updatePipelineOutputs(); }
+          );
           state.pipeline.draft = parseAiJson(draftRaw);
+          delete state.pipeline.stageStreams[3];
           const draftLength = visibleTextLength(state.pipeline.draft.html);
           updatePipelineOutputs();
           setPipelineStage(3,"done",draftLength.toLocaleString("ko-KR") + "자 기본 글");
@@ -1756,20 +1883,24 @@ ${input.transcript}
         if (startStep <= 4) {
           activeStep = 4;
           delete state.pipeline.stageErrors[4];
+          delete state.pipeline.stageStreams[4];
           updatePipelineOutputs();
           const minimumLength = Math.ceil(input.targetChars * 0.9);
+          const streamExpanded = (chunk) => { state.pipeline.stageStreams[4] = chunk; updatePipelineOutputs(); };
           setBusy(true,"4/5 Claude 2차 살붙이기 중...");
-          setPipelineStage(4,"running","사례·표·FAQ 확장 중");
-          const expandedRaw = await callClaude(settings,buildClaudeExpansionPrompt(input,state.pipeline.transcript,state.pipeline.analysis,state.pipeline.draft),16000,(detail) => setPipelineStage(4,"running",detail));
+          setPipelineStage(4,"running","Opus 직접 스트리밍 확장 중");
+          const expandedRaw = await callClaude(settings,buildClaudeExpansionPrompt(input,state.pipeline.transcript,state.pipeline.analysis,state.pipeline.draft),16000,(detail) => setPipelineStage(4,"running",detail),streamExpanded);
           let expanded = parseAiJson(expandedRaw);
           let finalLength = visibleTextLength(expanded.html);
           if (finalLength < minimumLength) {
+            state.pipeline.stageStreams[4] = "";
             setBusy(true,"4/5 목표 길이 자동 보강 중...");
-            setPipelineStage(4,"running",finalLength.toLocaleString("ko-KR") + "자 → 보강 중");
-            const correctedRaw = await callClaude(settings,buildLengthCorrectionPrompt(input,state.pipeline.transcript,state.pipeline.analysis,expanded,finalLength),16000,(detail) => setPipelineStage(4,"running",detail));
+            setPipelineStage(4,"running",finalLength.toLocaleString("ko-KR") + "자 → Opus 스트리밍 보강 중");
+            const correctedRaw = await callClaude(settings,buildLengthCorrectionPrompt(input,state.pipeline.transcript,state.pipeline.analysis,expanded,finalLength),16000,(detail) => setPipelineStage(4,"running",detail),streamExpanded);
             expanded = parseAiJson(correctedRaw);
             finalLength = visibleTextLength(expanded.html);
           }
+          delete state.pipeline.stageStreams[4];
           const tableCount = (expanded.html.match(/<table[\s>]/gi) || []).length;
           const requiredTables = input.targetChars >= 9000 ? 2 : 1;
           if (tableCount < requiredTables) throw new Error("Claude 2차 글에 실무 표가 부족합니다. 필요한 표: " + requiredTables + "개, 현재: " + tableCount + "개");
@@ -2502,7 +2633,7 @@ ${input.transcript}
       [els.videoUrl,els.topic,els.transcript,els.sources].forEach((element) => element.value = "");
       els.charCount.textContent = "0자";
       setBadge(els.videoBadge,"입력 대기");
-      state.pipeline = {transcript:"",analysis:null,draft:null,expanded:null,images:[],stageErrors:{},failedStep:0,running:false,inputFingerprint:"",warning:""};
+      state.pipeline = {transcript:"",analysis:null,draft:null,expanded:null,images:[],stageErrors:{},stageStreams:{},failedStep:0,running:false,inputFingerprint:"",warning:""};
       els.pipelinePanel.hidden = true;
       els.retryPipeline.hidden = true;
       showNotice("입력 내용과 파이프라인 중간 결과를 지웠습니다.","info");
