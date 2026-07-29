@@ -60,6 +60,11 @@
     .top-links .youtube{background:#fff0f0;color:#c62c2c}
     .install-btn{min-height:36px;border:1px solid #a8ded5;border-radius:10px;padding:7px 11px;background:var(--mint-soft);color:var(--teal);font-size:.76rem;font-weight:900}
     .install-btn:hover{border-color:var(--teal);background:#d9f4ec}
+    .refresh-btn{display:inline-flex;min-height:36px;align-items:center;justify-content:center;gap:5px;border:1px solid #c9d7df;border-radius:10px;padding:7px 10px;background:#f4f8fa;color:var(--navy);font-size:.76rem;font-weight:900}
+    .refresh-btn:hover{border-color:var(--teal);background:var(--mint-soft);color:var(--teal)}
+    .refresh-btn:disabled{cursor:wait;opacity:.72}
+    .refresh-btn.refreshing .refresh-icon{animation:spin .75s linear infinite}
+    .refresh-icon{display:inline-block;font-size:1.05rem;line-height:1}
     .hero{padding:54px 0 38px;background:radial-gradient(circle at 86% 25%,rgba(92,208,173,.2),transparent 29%),linear-gradient(135deg,var(--navy),var(--navy-2) 56%,#09645f);color:#fff}
     .hero-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(280px,.55fr);gap:42px;align-items:center}
     .eyebrow{display:inline-flex;align-items:center;gap:8px;margin:0 0 15px;color:#baf1e1;font-size:.77rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase}
@@ -221,7 +226,7 @@
       .workspace{grid-template-columns:1fr}.sidebar{position:static;grid-template-columns:1fr 1fr}.hero-grid{grid-template-columns:1fr}.hero-status{display:none}.settings-layout{grid-template-columns:1fr}.settings-card.wide{grid-column:auto}
     }
     @media (max-width:720px){
-      .container{width:min(100% - 24px,1180px)}.topbar-inner{min-height:64px;flex-wrap:wrap;padding-block:8px}.brand-copy span{display:none}.studio-nav{order:3;width:100%;margin:0}.studio-tab{flex:1}.top-links a:not(.youtube){display:none}.hero{padding:40px 0 31px}.hero h1{font-size:2.15rem}.steps{grid-template-columns:1fr 1fr}.step{padding:9px;font-size:.75rem}.workspace{gap:16px}.grid-2,.seo-grid,.sidebar,.video-list,.broll-grid,.verify-grid{grid-template-columns:1fr}.settings-hero{align-items:flex-start;flex-direction:column}.card-head,.card-body{padding-left:17px;padding-right:17px}.editor-tabs{padding-inline:17px}.publish-choice{grid-template-columns:1fr}.footer-inner{align-items:flex-start;flex-direction:column}
+      .container{width:min(100% - 24px,1180px)}.topbar-inner{min-height:64px;flex-wrap:wrap;padding-block:8px}.brand-copy span{display:none}.studio-nav{order:3;width:100%;margin:0}.studio-tab{flex:1}.top-links a:not(.youtube){display:none}.refresh-label{display:none}.refresh-btn{width:38px;padding:7px}.hero{padding:40px 0 31px}.hero h1{font-size:2.15rem}.steps{grid-template-columns:1fr 1fr}.step{padding:9px;font-size:.75rem}.workspace{gap:16px}.grid-2,.seo-grid,.sidebar,.video-list,.broll-grid,.verify-grid{grid-template-columns:1fr}.settings-hero{align-items:flex-start;flex-direction:column}.card-head,.card-body{padding-left:17px;padding-right:17px}.editor-tabs{padding-inline:17px}.publish-choice{grid-template-columns:1fr}.footer-inner{align-items:flex-start;flex-direction:column}
     }
     @media (max-width:420px){
       .steps{grid-template-columns:1fr}.hero-actions a{width:100%;justify-content:center}.toolbar .btn{width:100%}
@@ -245,6 +250,9 @@
         <a href="https://qaplus-haccp.blogspot.com/" target="_blank" rel="noopener noreferrer">블로그</a>
         <a href="https://drive.google.com/drive/folders/1tHqeagzD__Oqjc027TVJhcWQC0JkOIV6?usp=sharing" target="_blank" rel="noopener noreferrer">무료자료</a>
         <button id="pwaInstall" class="install-btn" type="button" hidden>앱 설치</button>
+        <button id="pwaRefresh" class="refresh-btn" type="button" aria-label="앱 새로고침" title="최신 버전으로 새로고침">
+          <span class="refresh-icon" aria-hidden="true">↻</span><span class="refresh-label">새로고침</span>
+        </button>
         <a class="youtube" href="https://youtube.com/@qaplus_haccp?si=2eoN3yuYCoDBpLru" target="_blank" rel="noopener noreferrer">YouTube</a>
       </nav>
     </div>
@@ -679,10 +687,31 @@
       verifyYoutubeStatus:$("verifyYoutubeStatus"), verifyLinksStatus:$("verifyLinksStatus"),
       aiActionFeedback:$("aiActionFeedback"), googleActionFeedback:$("googleActionFeedback"),
       verificationMessage:$("verificationMessage"), verificationBar:$("verificationBar"),
-      verificationStep:$("verificationStep"), verifyAllConnections:$("verifyAllConnections"), pwaInstall:$("pwaInstall")
+      verificationStep:$("verificationStep"), verifyAllConnections:$("verifyAllConnections"),
+      pwaInstall:$("pwaInstall"), pwaRefresh:$("pwaRefresh")
     };
 
+    async function refreshPwaApp() {
+      const button = els.pwaRefresh;
+      button.disabled = true;
+      button.classList.add("refreshing");
+      button.innerHTML = '<span class="refresh-icon" aria-hidden="true">↻</span><span class="refresh-label">업데이트 중</span>';
+      try {
+        if ("serviceWorker" in navigator) {
+          const registration = await navigator.serviceWorker.getRegistration("./");
+          if (registration) await registration.update();
+        }
+        await new Promise((resolve) => window.setTimeout(resolve,350));
+        const refreshedUrl = new URL(window.location.href);
+        refreshedUrl.searchParams.set("appRefresh",Date.now().toString());
+        window.location.replace(refreshedUrl.toString());
+      } catch (_) {
+        window.location.reload();
+      }
+    }
+
     function setupPwa() {
+      els.pwaRefresh.addEventListener("click",refreshPwaApp);
       if ("serviceWorker" in navigator) {
         window.addEventListener("load",() => {
           navigator.serviceWorker.register("./sw.js",{scope:"./"})
@@ -1279,9 +1308,22 @@ ${input.transcript}
         return `모델 또는 엔드포인트를 찾지 못했습니다. 원문: ${raw}`;
       }
       if (/Failed to fetch|NetworkError|Load failed/i.test(raw)) {
-        return `브라우저 네트워크/CORS 오류입니다. 원문: ${raw}`;
+        return `브라우저가 CheapSub 오류 응답을 읽지 못했습니다. 원문: ${raw}`;
       }
       return raw;
+    }
+
+    async function probeCheapSubReachability() {
+      try {
+        await fetch(`https://api.cheapsub.im/v1/models?probe=${Date.now()}`,{
+          method:"GET",
+          mode:"no-cors",
+          cache:"no-store"
+        });
+        return true;
+      } catch (_) {
+        return false;
+      }
     }
 
     async function verifyAiConnection() {
@@ -1321,7 +1363,14 @@ ${input.transcript}
         setActionFeedback(els.aiActionFeedback,"CheapSub 연결 성공 ✓",`${settings.model} 모델이 정상 응답했습니다.`,"success");
         return true;
       } catch (error) {
-        state.lastAiError = explainCheapSubError(error.message);
+        if (/Failed to fetch|NetworkError|Load failed/i.test(String(error.message || ""))) {
+          const reachable = await probeCheapSubReachability();
+          state.lastAiError = reachable
+            ? "CheapSub 서버에는 연결됩니다. 주소와 모델은 정상입니다. 키 비활성·잔액 부족 등의 오류 응답이 CORS 때문에 가려졌을 가능성이 큽니다. CheapSub 대시보드에서 키 상태와 크레딧을 확인해 주세요."
+            : "휴대폰에서 api.cheapsub.im 서버에 연결되지 않습니다. Wi-Fi·모바일 데이터 전환, VPN·광고차단 해제 후 새로고침해 주세요.";
+        } else {
+          state.lastAiError = explainCheapSubError(error.message);
+        }
         setVerifyStatus("ai","실패","warn");
         setBadge(els.aiStatus,"연결 실패","warn");
         setActionFeedback(els.aiActionFeedback,"CheapSub 연결 실패",state.lastAiError,"error");
