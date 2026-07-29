@@ -377,7 +377,7 @@
               <div class="field">
                 <label for="claudeModel">Claude 작성·확장 모델</label>
                 <input id="claudeModel" value="claude-opus-5" autocomplete="off" spellcheck="false">
-                <p class="hint">경제냠냠과 동일하게 Claude는 CheapSub에 직접 SSE 스트리밍으로 연결합니다. 직접 연결이 막힐 때만 QA PLUS 중계를 사용하며, Opus가 반복적으로 524일 때만 <strong>claude-sonnet-5</strong>를 최종 예비 모델로 사용합니다.</p>
+                <p class="hint">경제냠냠과 동일하게 Claude는 CheapSub에 직접 SSE 스트리밍으로 연결합니다. 글이 중간에서 잘리면 받은 원문을 보존하고 같은 Opus가 마지막 문자부터 최대 2회 자동으로 이어 씁니다. 직접 연결이 막힐 때만 QA PLUS 중계를 사용하며, Opus가 반복적으로 524일 때만 <strong>claude-sonnet-5</strong>를 최종 예비 모델로 사용합니다.</p>
               </div>
               <div class="field">
                 <label for="imageModel">OpenAI 이미지 모델</label>
@@ -1109,7 +1109,7 @@
       return content;
     };
 
-    async function callClaude(settings, prompt, maxTokens = 12000, onProgress = null, onChunk = null) {
+    async function callClaude(settings, prompt, maxTokens = 12000, onProgress = null, onChunk = null, requestMessages = null) {
       const directEndpoint = "https://api.cheapsub.im/v1/messages";
       const proxyEndpoint = cheapSubEndpoint(settings.endpoint,"messages");
       const safeMaxTokens = Math.max(256,Math.min(Number(maxTokens) || 12000,16000));
@@ -1196,7 +1196,12 @@
           response = await fetch(activeEndpoint,{
             method:"POST",
             headers:{"Content-Type":"application/json","x-api-key":settings.aiKey,"anthropic-version":"2023-06-01"},
-            body:JSON.stringify({model:activeModel,max_tokens:safeMaxTokens,messages:[{role:"user",content:prompt}],stream:true})
+            body:JSON.stringify({
+              model:activeModel,
+              max_tokens:safeMaxTokens,
+              messages:Array.isArray(requestMessages) && requestMessages.length ? requestMessages : [{role:"user",content:prompt}],
+              stream:true
+            })
           });
         } catch (error) {
           if (activeEndpoint === directEndpoint && proxyEndpoint !== directEndpoint && !usedProxyFallback && attempt < retryDelays.length - 1) {
@@ -1274,10 +1279,92 @@
           throw error;
         }
         if (!result.content) throw new Error("Claude 스트리밍 응답 본문이 비어 있습니다. stop_reason: " + (result.stopReason || "없음"));
-        if (result.stopReason === "max_tokens") throw new Error("Claude 출력이 max_tokens에서 잘렸습니다. 실패 단계부터 다시 실행해 주세요.");
+        if (result.stopReason === "max_tokens") report("Claude 출력 한도 도달 · 받은 글을 보존하고 자동 이어쓰기 준비");
         return result.content;
       }
       throw new Error("Claude 스트리밍 요청을 완료하지 못했습니다.");
+    };
+
+    function normalizeClaudeArticleEnvelope(content) {
+      let normalized = String(content || "").trim();
+      if (/<\/QAPLUS_HTML>/i.test(normalized) && !/<\/QAPLUS_RESULT>/i.test(normalized)) {
+        normalized += "\n</QAPLUS_RESULT>";
+      }
+      return normalized;
+    }
+
+    function isClaudeArticleComplete(content) {
+      const normalized = normalizeClaudeArticleEnvelope(content);
+      const tagged = [
+        /<QAPLUS_RESULT>/i,
+        /<QAPLUS_TITLE>[\s\S]*?<\/QAPLUS_TITLE>/i,
+        /<QAPLUS_DESCRIPTION>[\s\S]*?<\/QAPLUS_DESCRIPTION>/i,
+        /<QAPLUS_HTML>[\s\S]*?<\/QAPLUS_HTML>/i,
+        /<\/QAPLUS_RESULT>/i
+      ].every((pattern) => pattern.test(normalized));
+      if (tagged) return true;
+      const start = normalized.indexOf("{");
+      const end = normalized.lastIndexOf("}");
+      if (start < 0 || end <= start) return false;
+      try {
+        const json = JSON.parse(normalized.slice(start,end + 1));
+        return Boolean(json && json.title && json.description && json.html);
+      } catch (_) {
+        return false;
+      }
+    }
+
+    function mergeClaudeContinuation(received, continuation) {
+      const before = String(received || "");
+      const next = String(continuation || "").trimStart();
+      if (!before) return next.trim();
+      if (!next) return before.trim();
+      if (isClaudeArticleComplete(next)) return normalizeClaudeArticleEnvelope(next);
+      const overlapLimit = Math.min(4000,before.length,next.length);
+      for (let size=overlapLimit; size>=24; size -= 1) {
+        if (before.slice(-size) === next.slice(0,size)) return (before + next.slice(size)).trim();
+      }
+      return (before + next).trim();
+    }
+
+    async function callClaudeArticle(settings, prompt, maxTokens = 12000, onProgress = null, onChunk = null) {
+      const maxContinuations = 2;
+      let received = "";
+      for (let pass=0; pass<=maxContinuations; pass += 1) {
+        const requestMessages = pass === 0 ? null : [
+          {role:"user",content:prompt},
+          {role:"assistant",content:received},
+          {role:"user",content:[
+            "방금 assistant 답변이 전송 한도 때문에 중간에서 끊겼습니다.",
+            "이미 작성한 내용은 절대 반복하거나 처음부터 다시 쓰지 마세요.",
+            "위 assistant 답변의 마지막 문자 바로 다음부터만 이어서 작성하세요.",
+            "새 <QAPLUS_RESULT> 또는 <QAPLUS_HTML> 여는 태그를 만들지 말고, 남은 본문과 </QAPLUS_HTML>, </QAPLUS_RESULT>까지 반드시 닫아 완성하세요.",
+            "태그 밖의 설명이나 Markdown 코드블록은 쓰지 마세요."
+          ].join("\n")}
+        ];
+        const passLabel = pass ? "자동 이어쓰기 " + pass + "/" + maxContinuations + " · " : "";
+        const part = await callClaude(
+          settings,
+          prompt,
+          maxTokens,
+          (detail) => {
+            if (typeof onProgress === "function") onProgress(passLabel + detail);
+          },
+          (chunk, model) => {
+            if (typeof onChunk === "function") onChunk(mergeClaudeContinuation(received,chunk),model);
+          },
+          requestMessages
+        );
+        received = mergeClaudeContinuation(received,part);
+        received = normalizeClaudeArticleEnvelope(received);
+        if (typeof onChunk === "function") onChunk(received,settings.claudeModel || "claude-opus-5");
+        if (isClaudeArticleComplete(received)) return received;
+        if (pass < maxContinuations) {
+          if (typeof onProgress === "function") onProgress("응답 잘림 감지 · Opus 자동 이어쓰기 " + (pass + 1) + "/" + maxContinuations);
+          await new Promise((resolve) => window.setTimeout(resolve,350));
+        }
+      }
+      throw new Error("Claude 글이 두 번의 자동 이어쓰기 후에도 끝까지 완성되지 않았습니다. 결과 창의 수신 원문을 확인한 뒤 실패 단계부터 다시 실행해 주세요.");
     };
 
     function collectGeminiText(value, output = []) {
@@ -1867,7 +1954,7 @@ ${input.transcript}
           updatePipelineOutputs();
           setBusy(true,"3/5 Claude 1차 기본 글 작성 중...");
           setPipelineStage(3,"running","Opus 직접 스트리밍 연결 중");
-          const draftRaw = await callClaude(
+          const draftRaw = await callClaudeArticle(
             settings,
             buildClaudeDraftPrompt(input,state.pipeline.transcript,state.pipeline.analysis),
             8000,
@@ -1889,14 +1976,14 @@ ${input.transcript}
           const streamExpanded = (chunk) => { state.pipeline.stageStreams[4] = chunk; updatePipelineOutputs(); };
           setBusy(true,"4/5 Claude 2차 살붙이기 중...");
           setPipelineStage(4,"running","Opus 직접 스트리밍 확장 중");
-          const expandedRaw = await callClaude(settings,buildClaudeExpansionPrompt(input,state.pipeline.transcript,state.pipeline.analysis,state.pipeline.draft),16000,(detail) => setPipelineStage(4,"running",detail),streamExpanded);
+          const expandedRaw = await callClaudeArticle(settings,buildClaudeExpansionPrompt(input,state.pipeline.transcript,state.pipeline.analysis,state.pipeline.draft),16000,(detail) => setPipelineStage(4,"running",detail),streamExpanded);
           let expanded = parseAiJson(expandedRaw);
           let finalLength = visibleTextLength(expanded.html);
           if (finalLength < minimumLength) {
             state.pipeline.stageStreams[4] = "";
             setBusy(true,"4/5 목표 길이 자동 보강 중...");
             setPipelineStage(4,"running",finalLength.toLocaleString("ko-KR") + "자 → Opus 스트리밍 보강 중");
-            const correctedRaw = await callClaude(settings,buildLengthCorrectionPrompt(input,state.pipeline.transcript,state.pipeline.analysis,expanded,finalLength),16000,(detail) => setPipelineStage(4,"running",detail),streamExpanded);
+            const correctedRaw = await callClaudeArticle(settings,buildLengthCorrectionPrompt(input,state.pipeline.transcript,state.pipeline.analysis,expanded,finalLength),16000,(detail) => setPipelineStage(4,"running",detail),streamExpanded);
             expanded = parseAiJson(correctedRaw);
             finalLength = visibleTextLength(expanded.html);
           }
