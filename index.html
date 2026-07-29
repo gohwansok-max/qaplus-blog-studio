@@ -260,7 +260,7 @@
                 </div>
                 <div class="field">
                   <label class="required" for="topic">핵심 주제</label>
-                  <input id="topic" name="qaplus_topic" type="text" maxlength="90" placeholder="예: CCP 한계기준 이탈 시 조치 방법" autocomplete="new-password" data-form-type="other">
+                  <input id="topic" name="qaplus_subject_input" type="text" maxlength="90" placeholder="예: CCP 한계기준 이탈 시 조치 방법" autocomplete="off" data-form-type="other" data-lpignore="true" data-1p-ignore="true">
                 </div>
                 <div class="field">
                   <label for="category">대표 분야</label>
@@ -402,7 +402,7 @@
                 </div>
                 <div class="field">
                   <label for="aiKey">API 키</label>
-                  <input id="aiKey" type="password" placeholder="현재 탭에서만 사용" autocomplete="off">
+                  <input id="aiKey" name="qaplus_cheapsub_token" type="text" placeholder="csk_... (현재 탭에서만 사용)" autocomplete="off" autocapitalize="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" style="-webkit-text-security:disc">
                 </div>
                 <p class="security-note">API 키는 소스 코드에 포함되지 않으며 이 탭의 임시 저장소에만 보관됩니다. 공용 PC에서는 입력하지 마세요.</p>
                 <button id="importEconnyam" class="btn btn-mint btn-small" type="button">경제냠냠 설정 안전하게 가져오기</button>
@@ -992,11 +992,38 @@ ${input.transcript}
       setBadge(els.aiStatus,settings.aiKey ? "설정됨" : "미설정",settings.aiKey ? "ok" : "");
     }
 
-    function importEconnyamSettings(showMessage = true) {
+    async function readEconnyamIndexedDb() {
+      try {
+        if (indexedDB.databases) {
+          const databases = await indexedDB.databases();
+          if (!databases.some((item) => item.name === "econnyam")) return {};
+        }
+        return await new Promise((resolve) => {
+          const request = indexedDB.open("econnyam",1);
+          request.onerror = () => resolve({});
+          request.onsuccess = () => {
+            const db = request.result;
+            if (!db.objectStoreNames.contains("kv")) {
+              db.close();
+              resolve({});
+              return;
+            }
+            const query = db.transaction("kv").objectStore("kv").get(ECONNYAM_BLOG_KEY);
+            query.onsuccess = () => { db.close(); resolve(query.result || {}); };
+            query.onerror = () => { db.close(); resolve({}); };
+          };
+        });
+      } catch (_) {
+        return {};
+      }
+    }
+
+    async function importEconnyamSettings(showMessage = true) {
       let blogSettings = {};
       let studioSettings = {};
       try { blogSettings = JSON.parse(localStorage.getItem(ECONNYAM_BLOG_KEY) || "{}"); } catch (_) {}
       try { studioSettings = JSON.parse(localStorage.getItem(ECONNYAM_STUDIO_KEY) || "{}"); } catch (_) {}
+      if (!blogSettings.csk && !blogSettings.clientId) blogSettings = await readEconnyamIndexedDb();
       const aiKey = blogSettings.csk || studioSettings.openaiApiKey || "";
       const base = (blogSettings.base || studioSettings.openaiEndpoint || "https://api.cheapsub.im/v1").replace(/\/+$/,"");
       const endpoint = /\/chat\/completions$/i.test(base) ? base : `${base}/chat/completions`;
@@ -1259,7 +1286,7 @@ ${input.transcript}
     els.generateLocal.addEventListener("click",generateLocally);
     els.clearSource.addEventListener("click",clearSource);
     $("saveAiSettings").addEventListener("click",saveSettings);
-    $("importEconnyam").addEventListener("click",() => importEconnyamSettings(true));
+    $("importEconnyam").addEventListener("click",async () => { await importEconnyamSettings(true); });
     $("connectGoogle").addEventListener("click",connectGoogle);
     els.loadYoutube.addEventListener("click",() => fetchQaPlusVideos().catch((error) => showNotice(error.message,"error")));
     $("generateBroll").addEventListener("click",generateBrollImages);
