@@ -373,7 +373,7 @@
               <div class="field">
                 <label for="claudeModel">Claude 작성·확장 모델</label>
                 <input id="claudeModel" value="claude-opus-5" autocomplete="off" spellcheck="false">
-                <p class="hint">Opus는 크레딧 사용량과 응답 시간이 큽니다. 오류 창에 HTTP 402 또는 반복적인 상류 오류가 표시되면 <strong>claude-sonnet-5</strong>로 바꾼 뒤 설정을 저장해 다시 실행할 수 있습니다.</p>
+                <p class="hint">Opus는 크레딧 사용량과 응답 시간이 큽니다. HTTP 524 시간초과가 발생하면 앱이 <strong>claude-sonnet-5</strong>로 자동 전환합니다. HTTP 402가 표시되면 크레딧을 확인해 주세요.</p>
               </div>
               <div class="field">
                 <label for="imageModel">OpenAI 이미지 모델</label>
@@ -1102,13 +1102,15 @@
       const endpoint = cheapSubEndpoint(settings.endpoint,"messages");
       const safeMaxTokens = Math.max(256,Math.min(Number(maxTokens) || 12000,16000));
       const retryDelays = [0,1200,2600];
+      let activeModel = settings.claudeModel || "claude-sonnet-5";
+      let usedTimeoutFallback = false;
       for (let attempt=0; attempt<retryDelays.length; attempt += 1) {
         let response;
         try {
           response = await fetch(endpoint,{
             method:"POST",
             headers:{"Content-Type":"application/json","x-api-key":settings.aiKey,"anthropic-version":"2023-06-01"},
-            body:JSON.stringify({model:settings.claudeModel,max_tokens:safeMaxTokens,messages:[{role:"user",content:prompt}]})
+            body:JSON.stringify({model:activeModel,max_tokens:safeMaxTokens,messages:[{role:"user",content:prompt}]})
           });
         } catch (error) {
           if (attempt < retryDelays.length - 1) {
@@ -1125,6 +1127,13 @@
             const errorData = JSON.parse(raw);
             apiMessage = errorData.error?.message || errorData.message || apiMessage;
           } catch (_) {}
+          if (response.status === 524 && /claude-opus/i.test(activeModel) && !usedTimeoutFallback && attempt < retryDelays.length - 1) {
+            activeModel = "claude-sonnet-5";
+            usedTimeoutFallback = true;
+            if (typeof onRetry === "function") onRetry("Claude Opus 시간초과 → Sonnet 자동 전환");
+            await new Promise((resolve) => window.setTimeout(resolve,400));
+            continue;
+          }
           const retryable = response.status === 408 || response.status === 409 || response.status === 425 || response.status === 429 || response.status >= 500;
           if (retryable && attempt < retryDelays.length - 1) {
             if (typeof onRetry === "function") onRetry("Claude " + response.status + " · 자동 재시도 " + (attempt + 1) + "/2");
@@ -1136,6 +1145,9 @@
           else if (response.status === 402) guidance = " CheapSub 크레딧이 부족합니다. Claude Opus 호출 가능 잔액을 충전하거나 더 저렴한 Claude 모델을 선택해 주세요.";
           else if (response.status === 404) guidance = " 설정의 Claude 모델명이 현재 CheapSub 지원 목록에 있는지 확인해 주세요.";
           else if (response.status === 429) guidance = " 호출 제한에 도달했습니다. 잠시 후 실패 단계부터 다시 실행해 주세요.";
+          else if (response.status === 524) guidance = usedTimeoutFallback
+            ? " Claude Opus 시간초과 뒤 Sonnet으로 자동 전환했지만 상류 서버가 다시 시간초과했습니다. 잠시 후 실패 단계부터 다시 실행해 주세요."
+            : " Claude 상류 서버의 응답 시간초과입니다. Opus를 사용 중이면 앱이 Sonnet 자동 전환을 시도합니다.";
           else if (response.status >= 500) guidance = " CheapSub 상류 Claude 서버 오류입니다. 실패 요청은 문서상 크레딧이 차감되지 않습니다.";
           else if (response.status === 400 && /max.?tokens|token.*limit|too.*long|context/i.test(apiMessage)) guidance = " Claude 출력·입력 한도를 넘었습니다. 이번 버전은 1차 글 요청을 더 작게 보내도록 조정했습니다.";
           throw new Error("Claude 요청 실패 (HTTP " + response.status + ")." + guidance + " 원문: " + apiMessage);
