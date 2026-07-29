@@ -12,7 +12,7 @@ QA PLUS 공개 YouTube 영상을 근거로 Blogger용 식품안전 실무 글을
 
 글 길이 기본값은 **아주 풍성하게 9,000자**, 이미지 기본값은 **대표+본문 3장**입니다. 실패하면 완료된 단계 결과를 유지하고 **실패 단계부터 다시 실행**할 수 있습니다.
 
-각 단계 카드에는 독립적인 **결과 보기** 창이 있습니다. Gemini 대본과 ChatGPT 분석은 원문으로, Claude 1차·2차 글은 실제 글 형태의 미리보기와 JSON·HTML 원문으로, OpenAI 이미지는 이미지와 사용 프롬프트로 각각 확인할 수 있습니다. 실행 중에도 완료된 단계의 창은 즉시 열 수 있습니다. 실패하면 해당 단계의 결과 창이 자동으로 열리고 HTTP 상태·상류 오류 원문·해결 방법을 표시합니다. Claude의 네트워크·429·5xx 오류는 최대 2회 자동 재시도하며, 1차 글은 출력 잘림을 줄이도록 약 2,600~4,200자의 태그 형식으로 요청합니다. HTTP 524로 Claude Opus가 시간초과하면 같은 요청을 `claude-sonnet-5`로 자동 전환해 남은 재시도를 수행합니다.
+각 단계 카드에는 독립적인 **결과 보기** 창이 있습니다. Gemini 대본과 ChatGPT 분석은 원문으로, Claude 1차·2차 글은 실제 글 형태의 미리보기와 JSON·HTML 원문으로, OpenAI 이미지는 이미지와 사용 프롬프트로 각각 확인할 수 있습니다. 실행 중에도 완료된 단계의 창은 즉시 열 수 있습니다. 실패하면 해당 단계의 결과 창이 자동으로 열리고 HTTP 상태·상류 오류 원문·해결 방법을 표시합니다. Claude의 네트워크·429·5xx 오류는 최대 2회 자동 재시도하며, 1차 글은 출력 잘림을 줄이도록 약 2,600~4,200자의 태그 형식으로 요청합니다. Claude 1차·2차 글은 경제냠냠과 동일하게 CheapSub 직접 SSE 스트리밍으로 받아 결과 창에 실시간 표시합니다. 직접 연결이 브라우저에서 막힐 때만 QA PLUS 중계를 사용하고, Opus 스트리밍이 반복적으로 524일 때만 `claude-sonnet-5`를 최종 예비 모델로 사용합니다.
 
 ## 처음 한 번 설정하기
 
@@ -27,10 +27,10 @@ QA PLUS 공개 YouTube 영상을 근거로 Blogger용 식품안전 실무 글을
 
 - CheapSub에서 `csk_`로 시작하는 키를 발급하고 크레딧을 충전합니다.
 - 앱의 **CheapSub API 키**에 입력합니다.
-- 휴대폰 브라우저의 CORS 오류를 피하기 위해 기본 연결은 QA PLUS 전용 Cloudflare Worker `https://qa-plus-api.gohwansok.workers.dev`를 사용합니다. 앱에서 예전 CheapSub 직접 주소를 불러와도 중계 주소로 자동 변환합니다.
-  - ChatGPT 분석: `POST /v1/chat/completions`
-  - Claude 작성·확장: `POST /v1/messages`
-  - OpenAI 이미지: `POST /v1/images/generations`
+- ChatGPT 분석과 OpenAI 이미지는 휴대폰 CORS 오류를 피하도록 QA PLUS 전용 Cloudflare Worker `https://qa-plus-api.gohwansok.workers.dev`를 사용합니다.
+  - ChatGPT 분석: 중계 `POST /v1/chat/completions`
+  - Claude 작성·확장: CheapSub 직접 `POST https://api.cheapsub.im/v1/messages` + `stream:true` 우선, 연결 실패 시 중계 스트리밍
+  - OpenAI 이미지: 중계 `POST /v1/images/generations`
 - 중계 서버는 요청 경로만 전달하며, API 키는 HTML 소스에 저장하지 않고 브라우저의 현재 탭에서 요청 헤더로만 보냅니다.
 
 경제냠냠과 같은 브라우저 프로필에서 열면 **경제냠냠 설정 가져오기**로 CheapSub 키와 Google OAuth Client ID를 불러올 수 있습니다. Gemini 키는 별도로 입력해야 합니다.
