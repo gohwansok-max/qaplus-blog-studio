@@ -134,6 +134,24 @@
     .seo-box{padding:13px;border:1px solid var(--line);border-radius:12px;background:#f9fbfb}
     .seo-box strong{display:block;margin-bottom:5px;color:var(--navy);font-size:.76rem}
     .seo-box span{color:var(--muted);font-size:.76rem}
+    .video-picker{display:grid;gap:9px;margin-top:10px}
+    .video-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+    .video-item{display:grid;grid-template-columns:92px minmax(0,1fr);gap:10px;align-items:center;width:100%;padding:8px;border:1px solid var(--line);border-radius:12px;background:#f9fbfb;text-align:left}
+    .video-item:hover{border-color:#9bd8ce;background:var(--mint-soft)}
+    .video-item img{width:92px;aspect-ratio:16/9;object-fit:cover;border-radius:8px;background:#eaf0f2}
+    .video-item strong{display:-webkit-box;overflow:hidden;color:var(--navy);font-size:.75rem;line-height:1.45;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+    .video-item small{display:block;margin-top:4px;color:var(--muted);font-size:.65rem}
+    .broll-panel{margin-top:18px;padding:17px;border:1px solid #b9e3da;border-radius:15px;background:#f1faf8}
+    .broll-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:12px}
+    .broll-head h3{margin:0;color:var(--navy);font-size:.95rem}
+    .broll-head p{margin:4px 0 0;color:var(--muted);font-size:.72rem}
+    .broll-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+    .broll-card{display:grid;gap:7px;padding:12px;border:1px solid #cfe7e1;border-radius:11px;background:#fff}
+    .broll-card strong{color:var(--teal);font-size:.72rem}
+    .broll-card textarea{min-height:116px;padding:9px;border-radius:8px;font-size:.67rem;line-height:1.5}
+    .broll-result{display:none;margin-top:12px;padding:11px;border-radius:10px;background:#fff;color:var(--muted);font-size:.74rem}
+    .broll-result.show{display:block}
+    .broll-result img{display:block;width:100%;max-width:520px;margin-top:10px;border-radius:12px}
     .preview-frame{width:100%;min-height:560px;border:0;border-radius:0 0 var(--radius) var(--radius);background:#fff}
     .html-editor{min-height:520px;border:0;border-radius:0 0 var(--radius) var(--radius);font-family:Consolas,monospace;font-size:.78rem;white-space:pre}
     .publish-box{display:grid;gap:14px}
@@ -154,7 +172,7 @@
       .workspace{grid-template-columns:1fr}.sidebar{position:static;grid-template-columns:1fr 1fr}.hero-grid{grid-template-columns:1fr}.hero-status{display:none}
     }
     @media (max-width:720px){
-      .container{width:min(100% - 24px,1180px)}.topbar-inner{min-height:64px}.brand-copy span{display:none}.top-links a:not(.youtube){display:none}.hero{padding:40px 0 31px}.hero h1{font-size:2.15rem}.steps{grid-template-columns:1fr 1fr}.step{padding:9px;font-size:.75rem}.workspace{gap:16px}.grid-2,.seo-grid,.sidebar{grid-template-columns:1fr}.card-head,.card-body{padding-left:17px;padding-right:17px}.editor-tabs{padding-inline:17px}.publish-choice{grid-template-columns:1fr}.footer-inner{align-items:flex-start;flex-direction:column}
+      .container{width:min(100% - 24px,1180px)}.topbar-inner{min-height:64px}.brand-copy span{display:none}.top-links a:not(.youtube){display:none}.hero{padding:40px 0 31px}.hero h1{font-size:2.15rem}.steps{grid-template-columns:1fr 1fr}.step{padding:9px;font-size:.75rem}.workspace{gap:16px}.grid-2,.seo-grid,.sidebar,.video-list,.broll-grid{grid-template-columns:1fr}.card-head,.card-body{padding-left:17px;padding-right:17px}.editor-tabs{padding-inline:17px}.publish-choice{grid-template-columns:1fr}.footer-inner{align-items:flex-start;flex-direction:column}
     }
     @media (max-width:420px){
       .steps{grid-template-columns:1fr}.hero-actions a{width:100%;justify-content:center}.toolbar .btn{width:100%}
@@ -232,6 +250,13 @@
                   <label class="required" for="videoUrl">YouTube 영상 주소</label>
                   <input id="videoUrl" type="url" inputmode="url" placeholder="https://youtu.be/영상ID 또는 youtube.com/watch?v=..." autocomplete="off">
                   <p class="help">영상이 아직 비공개라면 주소 없이 주제와 대본만 입력해도 됩니다.</p>
+                  <div class="video-picker">
+                    <div class="toolbar" style="margin-top:2px">
+                      <button id="loadYoutube" class="btn btn-secondary btn-small" type="button" disabled>QA PLUS 최신 영상 불러오기</button>
+                      <span id="channelSummary" class="badge">Google 연결 필요</span>
+                    </div>
+                    <div id="videoList" class="video-list" aria-live="polite"></div>
+                  </div>
                 </div>
                 <div class="field">
                   <label class="required" for="topic">핵심 주제</label>
@@ -308,6 +333,25 @@
                   <div class="seo-box"><strong>영상 연결</strong><span id="seoVideo">연결된 영상 없음</span></div>
                   <div class="seo-box"><strong>무료자료 CTA</strong><span>QA PLUS Google Drive 연결</span></div>
                 </div>
+                <section class="broll-panel" aria-labelledby="brollTitle">
+                  <div class="broll-head">
+                    <div>
+                      <h3 id="brollTitle">QA PLUS 실사 B-roll 이미지</h3>
+                      <p>기존 영상 자동화의 현장·조명·위생·금지 규칙을 그대로 적용합니다.</p>
+                    </div>
+                    <span id="brollStatus" class="badge">프롬프트 대기</span>
+                  </div>
+                  <div id="brollGrid" class="broll-grid"></div>
+                  <div class="toolbar">
+                    <select id="brollCount" aria-label="생성할 이미지 수" style="width:auto;min-width:128px">
+                      <option value="1">대표 1장</option>
+                      <option value="3">대표+본문 3장</option>
+                    </select>
+                    <button id="generateBroll" class="btn btn-mint btn-small" type="button">실사 이미지 생성·삽입</button>
+                    <button id="copyBroll" class="btn btn-secondary btn-small" type="button">B-roll 프롬프트 복사</button>
+                  </div>
+                  <div id="brollResult" class="broll-result" aria-live="polite"></div>
+                </section>
               </div>
 
               <div class="editor-tabs" role="tablist" aria-label="결과 보기">
@@ -338,6 +382,7 @@
             <div class="connection">
               <div class="connection-row"><span>AI 생성</span><span id="aiStatus" class="badge">미설정</span></div>
               <div class="connection-row"><span>Google Blogger</span><span id="googleStatus" class="badge">연결 안 됨</span></div>
+              <div class="connection-row"><span>QA PLUS YouTube</span><span id="youtubeStatus" class="badge">연결 안 됨</span></div>
               <div class="connection-row"><span>QA PLUS 블로그</span><span class="badge ok">주소 확인</span></div>
             </div>
           </section>
@@ -360,18 +405,19 @@
                   <input id="aiKey" type="password" placeholder="현재 탭에서만 사용" autocomplete="off">
                 </div>
                 <p class="security-note">API 키는 소스 코드에 포함되지 않으며 이 탭의 임시 저장소에만 보관됩니다. 공용 PC에서는 입력하지 마세요.</p>
+                <button id="importEconnyam" class="btn btn-mint btn-small" type="button">경제냠냠 설정 안전하게 가져오기</button>
                 <button id="saveAiSettings" class="btn btn-secondary btn-small" type="button">AI 설정 적용</button>
               </div>
             </details>
             <details style="margin-top:10px">
-              <summary>Google Blogger 연결 열기</summary>
+              <summary>Google·YouTube 통합 연결 열기</summary>
               <div class="settings-body">
                 <div class="field">
                   <label for="googleClientId">Google OAuth Client ID</label>
                   <input id="googleClientId" placeholder="...apps.googleusercontent.com" autocomplete="off">
                 </div>
-                <p class="security-note">Google Cloud OAuth에 이 GitHub Pages 주소를 승인된 JavaScript 원본으로 등록해야 합니다. 토큰은 메모리에만 유지됩니다.</p>
-                <button id="connectGoogle" class="btn btn-secondary btn-small" type="button">Google 계정 연결</button>
+                <p class="security-note">Google Cloud OAuth에 이 GitHub Pages 원본을 등록해야 합니다. 소유 영상 자막 다운로드 때문에 YouTube 권한 문구가 넓게 표시되지만, 이 앱은 채널·영상·자막 조회만 사용합니다. 토큰은 메모리에만 유지됩니다.</p>
+                <button id="connectGoogle" class="btn btn-secondary btn-small" type="button">Google·YouTube 연결</button>
               </div>
             </details>
           </section>
@@ -414,15 +460,57 @@
 
     const BLOG_URL = "https://qaplus-haccp.blogspot.com/";
     const YOUTUBE_CHANNEL = "https://youtube.com/@qaplus_haccp?si=2eoN3yuYCoDBpLru";
+    const YOUTUBE_HANDLE = "@qaplus_haccp";
     const DRIVE_URL = "https://drive.google.com/drive/folders/1tHqeagzD__Oqjc027TVJhcWQC0JkOIV6?usp=sharing";
     const SESSION_KEY = "qaplus-blog-studio-settings";
     const HISTORY_KEY = "qaplus-blog-studio-published";
+    const ECONNYAM_BLOG_KEY = "econnyam.studio.v8";
+    const ECONNYAM_STUDIO_KEY = "econnyam_settings_v2";
+    const GOOGLE_SCOPES = [
+      "https://www.googleapis.com/auth/blogger",
+      "https://www.googleapis.com/auth/youtube.readonly",
+      "https://www.googleapis.com/auth/youtube.force-ssl"
+    ].join(" ");
+
+    const BROLL_ZONES = {
+      "HACCP":[
+        {name:"생산 현장",scene:"real Korean small-to-mid-sized food factory production floor, approximately 700 lux cool-white 5000–5600K fluorescent lighting, glossy green epoxy floor with realistic scuffs, decade-used stainless equipment with faint water spots",props:"stainless floor drain, washdown hose, insect light trap and white sanitary coving"},
+        {name:"위생 전실",scene:"real Korean food factory hygiene anteroom, practical cool-white fluorescent light, stainless handwashing station and boot sanitation area, slightly worn but well maintained surfaces",props:"hands-free faucet, soap dispenser, boot rack and sanitation timer with no readable text"},
+        {name:"기록 확인",scene:"close documentary view of a HACCP monitoring record on a Korean factory desk, naturally handled paper with slight corner wear, gloved hand checking a blank table area",props:"black pen, stainless clipboard, small digital timer and blurred equipment edge"}
+      ],
+      "FSSC 22000":[
+        {name:"창고 점검",scene:"real Korean food factory raw-material warehouse, neutral warehouse lighting, practical aisles and honest operating wear, materials stored off the floor",props:"blue PP pallets, stretch-wrapped cartons, pallet label holders with no readable text and a wall thermometer"},
+        {name:"심사 대응",scene:"lived-in Korean quality office during an FSSC 22000 audit preparation, 500–700 lux exposed fluorescent battens, pale oak desk and ordinary cubicle partitions",props:"monitor, visible cables, corded phone and tabbed binders with no readable text"},
+        {name:"현장 검증",scene:"real Korean mid-size food production line during an internal verification walk, cool-white lighting, aged stainless surfaces and green epoxy floor",props:"stainless drain, insect light trap, washdown hose and white sanitary coving"}
+      ],
+      "식품안전":[
+        {name:"손씻기",scene:"real Korean food factory handwashing station inside production, bright cool-white hygienic lighting, stainless sink with genuine daily-use marks",props:"hands-free faucet, soap dispenser, nail brush holder and paper towel dispenser"},
+        {name:"가열 공정",scene:"real Korean wet cooking room, warm steam balanced with cool overhead fluorescent light, aged stainless kettle and wet green epoxy floor with controlled drainage",props:"temperature probe, stainless drain, washdown hose and covered ingredient container"},
+        {name:"금속검출",scene:"real Korean dry packing line at a metal detector, practical overhead fluorescent lighting, stainless conveyor with ordinary use marks",props:"sealed sample pouch, reject bin, blue PP tote and blurred control panel"}
+      ],
+      "품질관리":[
+        {name:"품질 실험실",scene:"real Korean food factory QC laboratory, neutral 5000K task lighting, compact practical bench with ordinary wear rather than a futuristic lab",props:"digital scale, pipette rack, stainless sample tray and capped sample containers"},
+        {name:"관리 사무실",scene:"lived-in Korean quality office, 500–700 lux fluorescent battens, pale oak desk, modest cubicle partitions and practical working clutter",props:"monitor, visible cables, corded phone and monthly calendar with no readable text"},
+        {name:"현장 확인",scene:"real Korean small-to-mid-sized food factory production area during a quality check, glossy green epoxy floor and decade-used stainless line",props:"clipboard, stainless drain, insect light trap and washdown hose"}
+      ],
+      "무료자료":[
+        {name:"점검표",scene:"close documentary photograph of a Korean food-safety checklist on a pale oak office desk, naturally handled paper with slight folds and a clean blank text plate",props:"black pen, stainless clipboard, desk calendar blurred beyond recognition and ruler"},
+        {name:"교육자료",scene:"real Korean quality training room with a practical whiteboard and simple tables, neutral fluorescent lighting and lived-in office realism",props:"stacked handouts with no readable text, marker tray, stainless sample container and wall clock"},
+        {name:"현장 활용",scene:"gloved hand using a blank food-safety checklist beside an operating Korean production line, cool-white light and realistic stainless wear",props:"clipboard, temperature probe, green epoxy floor and stainless drain"}
+      ]
+    };
+    const BROLL_NEGATIVE = "Negative: 3D render, CGI, illustration, spotless cleanroom, brand-new factory, futuristic laboratory, neon lighting, dramatic cinema color grade, low contrast haze, fisheye, dutch angle, exposed hair, missing mask, identifiable face, cloned workers, repeated containers, readable text, Korean lettering, equipment model numbers, brand logos, watermark.";
+    const BROLL_OUTPUT = "Static documentary camera, authentic Korean industrial proportions, title-safe composition, photorealistic, natural material texture, 16:9 landscape, 4K. No readable text; keep any document or sign as a clean blank plate for later overlay.";
 
     const state = {
       post: null,
       googleToken: "",
       googleTokenClient: null,
       blogId: "",
+      youtubeChannel: null,
+      youtubeVideos: [],
+      youtubeOwned: false,
+      imageCount: 0,
       busy: false
     };
 
@@ -436,6 +524,8 @@
       labels:$("labels"), keywords:$("keywords"), previewFrame:$("previewFrame"),
       htmlEditor:$("htmlEditor"), aiEndpoint:$("aiEndpoint"), aiModel:$("aiModel"), aiKey:$("aiKey"),
       aiStatus:$("aiStatus"), googleClientId:$("googleClientId"), googleStatus:$("googleStatus"),
+      youtubeStatus:$("youtubeStatus"), loadYoutube:$("loadYoutube"), channelSummary:$("channelSummary"), videoList:$("videoList"),
+      brollGrid:$("brollGrid"), brollStatus:$("brollStatus"), brollResult:$("brollResult"), brollCount:$("brollCount"),
       publishBlogger:$("publishBlogger"), publishLog:$("publishLog"), videoBadge:$("videoBadge"),
       seoVideo:$("seoVideo")
     };
@@ -539,6 +629,115 @@
       return `<p style="margin:0 0 18px;color:#344754;line-height:1.85">${escapeHtml(text)}</p>`;
     }
 
+    function buildBrollPrompts(input) {
+      const zones = BROLL_ZONES[input.category] || BROLL_ZONES["HACCP"];
+      const camera = [
+        "Eye-level 28mm wide establishing shot, subject distance 5–7 meters, no people.",
+        "Chest-height 50mm medium documentary shot, subject distance 2–3 meters, one gloved hand only.",
+        "Slight high-angle 70mm close detail shot, subject distance under 1 meter, no identifiable person."
+      ];
+      return zones.map((zone,index) => ({
+        role:index === 0 ? "대표 이미지" : `본문 이미지 ${index + 1}`,
+        alt:`${input.topic} ${zone.name} 실사 현장 이미지`,
+        prompt:`${zone.scene}. Topic context: ${input.topic}. Include exactly 2–4 verified Korean food-factory props: ${zone.props}. ${camera[index]} Show orderly irregularity and realistic decade-used surfaces, never a staged showroom. ${BROLL_OUTPUT} ${BROLL_NEGATIVE}`
+      }));
+    }
+
+    function renderBrollPrompts(input) {
+      if (!state.post) return;
+      state.post.imagePrompts = buildBrollPrompts(input);
+      els.brollGrid.innerHTML = state.post.imagePrompts.map((item,index) => `
+        <div class="broll-card">
+          <strong>${escapeHtml(item.role)} · ${escapeHtml(item.alt)}</strong>
+          <textarea data-broll-index="${index}" aria-label="${escapeHtml(item.role)} 프롬프트">${escapeHtml(item.prompt)}</textarea>
+        </div>`).join("");
+      setBadge(els.brollStatus,"실사 규칙 적용","ok");
+      els.brollResult.className = "broll-result";
+      els.brollResult.textContent = "";
+    }
+
+    function currentBrollPrompts() {
+      if (!state.post) return [];
+      return [...els.brollGrid.querySelectorAll("[data-broll-index]")].map((area,index) => ({
+        ...(state.post.imagePrompts[index] || {}),
+        prompt:area.value.trim()
+      })).filter((item) => item.prompt);
+    }
+
+    function responsesEndpoint(endpoint) {
+      const url = new URL(endpoint);
+      url.pathname = url.pathname.replace(/\/chat\/completions\/?$/,"/responses");
+      return url.toString();
+    }
+
+    function insertBrollFigure(item,dataUrl,index) {
+      const figure = `<figure style="margin:24px 0"><img src="${dataUrl}" alt="${escapeHtml(item.alt)}" loading="lazy" style="display:block;width:100%;height:auto;border-radius:14px"><figcaption style="margin-top:8px;color:#6a7b86;font-size:.82rem;text-align:center">${escapeHtml(item.alt)}</figcaption></figure>`;
+      const html = sanitizePostHtml(els.htmlEditor.value);
+      const headings = [...html.matchAll(/<\/h2>/gi)];
+      if (headings.length) {
+        const target = headings[Math.min(index,headings.length - 1)];
+        const at = target.index + target[0].length;
+        els.htmlEditor.value = html.slice(0,at) + figure + html.slice(at);
+      } else {
+        els.htmlEditor.value = figure + html;
+      }
+      state.post.html = els.htmlEditor.value;
+    }
+
+    async function generateBrollImages() {
+      if (!state.post) return showNotice("먼저 블로그 글을 생성해 주세요.","error");
+      const settings = getSettings();
+      if (!settings.aiKey) return showNotice("CheapSub API 키가 필요합니다. 경제냠냠 설정 가져오기를 먼저 눌러 주세요.","error");
+      const prompts = currentBrollPrompts();
+      const count = Math.min(Number(els.brollCount.value) || 1,prompts.length);
+      if (!prompts.length) return showNotice("B-roll 프롬프트를 먼저 생성해 주세요.","error");
+      const button = $("generateBroll");
+      button.disabled = true;
+      button.innerHTML = `<span class="spinner"></span>실사 이미지 0/${count}`;
+      els.brollResult.className = "broll-result show";
+      els.brollResult.textContent = "CheapSub 이미지 생성 도구를 호출하고 있습니다. 장당 시간이 걸릴 수 있습니다.";
+      try {
+        for (let index=0; index<count; index += 1) {
+          button.innerHTML = `<span class="spinner"></span>실사 이미지 ${index + 1}/${count}`;
+          const response = await fetch(responsesEndpoint(settings.endpoint),{
+            method:"POST",
+            headers:{"Content-Type":"application/json","Authorization":`Bearer ${settings.aiKey}`},
+            body:JSON.stringify({
+              model:/^gpt-/i.test(settings.model) ? settings.model : "gpt-5.6-sol",
+              input:`Generate an image. ${prompts[index].prompt}`,
+              tools:[{type:"image_generation",action:"generate"}]
+            })
+          });
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(data.error?.message || `이미지 요청 실패 (${response.status})`);
+          const imageCall = (data.output || []).find((item) => item.type === "image_generation_call" && item.result);
+          if (!imageCall) throw new Error("CheapSub 응답에 이미지 데이터가 없습니다. 현재 모델의 이미지 도구 지원을 확인해 주세요.");
+          const dataUrl = `data:image/png;base64,${imageCall.result}`;
+          insertBrollFigure(prompts[index],dataUrl,index);
+          state.imageCount += 1;
+          els.brollResult.innerHTML = `<strong>${state.imageCount}장 생성·본문 삽입 완료</strong><img src="${dataUrl}" alt="${escapeHtml(prompts[index].alt)}">`;
+          renderPreview();
+        }
+        setBadge(els.brollStatus,`${state.imageCount}장 삽입`,"ok");
+        showNotice(`QA PLUS 실사 B-roll 이미지 ${count}장을 만들고 본문에 삽입했습니다.`,"success");
+      } catch (error) {
+        setBadge(els.brollStatus,"생성 확인 필요","warn");
+        els.brollResult.textContent = error.message;
+        showNotice(error.message,"error");
+      } finally {
+        button.disabled = false;
+        button.textContent = "실사 이미지 생성·삽입";
+      }
+    }
+
+    function copyBrollPrompts() {
+      const text = currentBrollPrompts().map((item,index) => `${index + 1}. ${item.prompt}`).join("\n\n");
+      if (!text) return showNotice("복사할 B-roll 프롬프트가 없습니다.","error");
+      navigator.clipboard.writeText(text)
+        .then(() => showNotice("QA PLUS 실사 B-roll 프롬프트를 복사했습니다.","success"))
+        .catch(() => showNotice("브라우저가 복사를 허용하지 않았습니다.","error"));
+    }
+
     function buildLocalPost(input) {
       const sentences = splitSentences(input.transcript);
       const keywords = pickKeywords(input.topic, input.transcript);
@@ -610,7 +809,8 @@ ${input.transcript}
 6. 무료자료 CTA는 ${DRIVE_URL} 로 연결합니다.
 7. 외부 링크는 target="_blank" rel="noopener noreferrer"를 사용합니다.
 8. 마지막에 일반 실무 참고용이며 최신 기준을 확인하라는 면책 문구를 넣습니다.
-9. Markdown 코드블록 없이 JSON만 반환합니다.
+9. 본문에는 임의 이미지 URL이나 base64 이미지를 만들지 않습니다. 이미지는 QA PLUS B-roll 단계에서 별도로 삽입합니다.
+10. Markdown 코드블록 없이 JSON만 반환합니다.
 
 반환 JSON 규격:
 {
@@ -647,7 +847,11 @@ ${input.transcript}
           const name = attribute.name.toLowerCase();
           const value = attribute.value.trim();
           if (name.startsWith("on")) element.removeAttribute(attribute.name);
-          if (["href","src"].includes(name) && /^(javascript|data):/i.test(value)) element.removeAttribute(attribute.name);
+          if (name === "href" && /^(javascript|data):/i.test(value)) element.removeAttribute(attribute.name);
+          if (name === "src") {
+            const safeImageData = element.tagName === "IMG" && /^data:image\/(png|jpeg|webp);base64,/i.test(value);
+            if (/^javascript:/i.test(value) || (/^data:/i.test(value) && !safeImageData)) element.removeAttribute(attribute.name);
+          }
           if (element.tagName === "IFRAME" && name === "src" && !/^https:\/\/www\.youtube-nocookie\.com\/embed\//i.test(value)) element.remove();
         });
         if (element.tagName === "A" && element.getAttribute("target") === "_blank") {
@@ -675,6 +879,8 @@ ${input.transcript}
       els.labels.value = [...new Set([input.category,...state.post.labels])].filter(Boolean).slice(0,5).join(", ");
       els.keywords.value = [...new Set(state.post.keywords)].filter(Boolean).slice(0,8).join(", ");
       els.htmlEditor.value = state.post.html;
+      state.imageCount = 0;
+      renderBrollPrompts(input);
       els.metaCount.textContent = `${els.metaDescription.value.length} / 150자`;
       els.seoVideo.textContent = input.videoId ? `YouTube ${input.videoId}` : "연결된 영상 없음";
       els.resultEmpty.hidden = true;
@@ -705,7 +911,8 @@ ${input.transcript}
             messages:[
               {role:"system",content:"You are the senior editor for QA PLUS. Return valid JSON only."},
               {role:"user",content:buildAiPrompt(input)}
-            ]
+            ],
+            max_tokens:7000
           })
         });
         const raw = await response.text();
@@ -785,6 +992,123 @@ ${input.transcript}
       setBadge(els.aiStatus,settings.aiKey ? "설정됨" : "미설정",settings.aiKey ? "ok" : "");
     }
 
+    function importEconnyamSettings(showMessage = true) {
+      let blogSettings = {};
+      let studioSettings = {};
+      try { blogSettings = JSON.parse(localStorage.getItem(ECONNYAM_BLOG_KEY) || "{}"); } catch (_) {}
+      try { studioSettings = JSON.parse(localStorage.getItem(ECONNYAM_STUDIO_KEY) || "{}"); } catch (_) {}
+      const aiKey = blogSettings.csk || studioSettings.openaiApiKey || "";
+      const base = (blogSettings.base || studioSettings.openaiEndpoint || "https://api.cheapsub.im/v1").replace(/\/+$/,"");
+      const endpoint = /\/chat\/completions$/i.test(base) ? base : `${base}/chat/completions`;
+      const model = blogSettings.m1 || "gpt-5.6-sol";
+      const clientId = blogSettings.clientId || "";
+      if (aiKey) els.aiKey.value = aiKey;
+      if (endpoint) els.aiEndpoint.value = endpoint;
+      if (model) els.aiModel.value = model;
+      if (clientId) els.googleClientId.value = clientId;
+      const settings = getSettings();
+      sessionStorage.setItem(SESSION_KEY,JSON.stringify(settings));
+      setBadge(els.aiStatus,settings.aiKey ? "경제냠냠 키 적용" : "키 없음",settings.aiKey ? "ok" : "warn");
+      $("importEconnyam").textContent = settings.aiKey ? "경제냠냠 설정 가져옴 ✓" : "경제냠냠 설정을 찾지 못함";
+      if (showMessage) {
+        const parts = [settings.aiKey && "CheapSub",settings.clientId && "Google OAuth"].filter(Boolean);
+        showNotice(parts.length ? `경제냠냠에서 ${parts.join("·")} 설정을 안전하게 가져왔습니다.` : "이 브라우저에서 경제냠냠 저장 설정을 찾지 못했습니다.","info");
+      }
+      return Boolean(settings.aiKey || settings.clientId);
+    }
+
+    function googleApi(url) {
+      return fetch(url,{headers:{Authorization:`Bearer ${state.googleToken}`}}).then(async (response) => {
+        const text = await response.text();
+        let data;
+        try { data = JSON.parse(text); } catch (_) { data = text; }
+        if (!response.ok) throw new Error(data?.error?.message || `Google API 요청 실패 (${response.status})`);
+        return data;
+      });
+    }
+
+    function stripSrt(value) {
+      const seen = new Set();
+      return String(value).replace(/\uFEFF/g,"").split(/\r?\n/).map((line) => line.trim())
+        .filter((line) => line && !/^\d+$/.test(line) && !/^\d{2}:\d{2}:\d{2}[,.]\d{3}\s+-->/i.test(line))
+        .map((line) => line.replace(/<[^>]+>/g,"").trim())
+        .filter((line) => line && !seen.has(line) && seen.add(line))
+        .join(" ");
+    }
+
+    async function fetchOwnedTranscript(videoId) {
+      if (!state.youtubeOwned) return "";
+      const list = await googleApi(`https://www.googleapis.com/youtube/v3/captions?part=snippet&videoId=${encodeURIComponent(videoId)}`);
+      const tracks = (list.items || []).filter((item) => item.snippet?.status === "serving");
+      const track = tracks.find((item) => item.snippet?.language === "ko" && item.snippet?.trackKind !== "ASR")
+        || tracks.find((item) => item.snippet?.language === "ko")
+        || tracks[0];
+      if (!track?.id) return "";
+      const response = await fetch(`https://www.googleapis.com/youtube/v3/captions/${encodeURIComponent(track.id)}?tfmt=srt`,{
+        headers:{Authorization:`Bearer ${state.googleToken}`}
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error?.message || `자막 다운로드 실패 (${response.status})`);
+      }
+      return stripSrt(await response.text());
+    }
+
+    function renderYoutubeVideos() {
+      const channel = state.youtubeChannel;
+      setBadge(els.channelSummary,channel ? `${channel.snippet.title} · ${state.youtubeVideos.length}편` : "영상 없음",channel ? "ok" : "warn");
+      els.videoList.innerHTML = state.youtubeVideos.slice(0,8).map((video,index) => `
+        <button class="video-item" type="button" data-video-index="${index}">
+          <img src="${escapeHtml(video.snippet.thumbnails?.medium?.url || video.snippet.thumbnails?.default?.url || "")}" alt="" loading="lazy">
+          <span><strong>${escapeHtml(video.snippet.title)}</strong><small>${new Date(video.snippet.publishedAt).toLocaleDateString("ko-KR")}</small></span>
+        </button>`).join("");
+      els.videoList.querySelectorAll("[data-video-index]").forEach((button) => {
+        button.addEventListener("click",() => selectYoutubeVideo(Number(button.dataset.videoIndex)));
+      });
+    }
+
+    async function fetchQaPlusVideos() {
+      if (!state.googleToken) throw new Error("먼저 Google 계정을 연결해 주세요.");
+      setBadge(els.youtubeStatus,"채널 확인 중","warn");
+      const target = await googleApi(`https://www.googleapis.com/youtube/v3/channels?part=snippet,contentDetails&forHandle=${encodeURIComponent(YOUTUBE_HANDLE)}`);
+      const channel = target.items?.[0];
+      if (!channel) throw new Error("YouTube에서 @qaplus_haccp 채널을 찾지 못했습니다.");
+      const mine = await googleApi("https://www.googleapis.com/youtube/v3/channels?part=id&mine=true");
+      state.youtubeOwned = Boolean((mine.items || []).some((item) => item.id === channel.id));
+      state.youtubeChannel = channel;
+      const playlistId = channel.contentDetails?.relatedPlaylists?.uploads;
+      if (!playlistId) throw new Error("QA PLUS 업로드 재생목록을 확인하지 못했습니다.");
+      const videos = await googleApi(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&maxResults=20&playlistId=${encodeURIComponent(playlistId)}`);
+      state.youtubeVideos = (videos.items || []).filter((item) => item.contentDetails?.videoId && !/private video|deleted video/i.test(item.snippet?.title || ""));
+      renderYoutubeVideos();
+      setBadge(els.youtubeStatus,state.youtubeOwned ? "소유 채널 연결" : "공개 채널 조회",state.youtubeOwned ? "ok" : "warn");
+      els.loadYoutube.disabled = false;
+      return state.youtubeVideos;
+    }
+
+    async function selectYoutubeVideo(index) {
+      const item = state.youtubeVideos[index];
+      if (!item) return;
+      const videoId = item.contentDetails.videoId;
+      els.videoUrl.value = `https://www.youtube.com/watch?v=${videoId}`;
+      els.topic.value = item.snippet.title || "";
+      setBadge(els.videoBadge,"영상 선택됨","ok");
+      setBadge(els.youtubeStatus,"자막 확인 중","warn");
+      let transcript = "";
+      try { transcript = await fetchOwnedTranscript(videoId); } catch (error) { console.warn("Caption fallback",error); }
+      if (transcript.length >= 120) {
+        els.transcript.value = transcript;
+        showNotice(`소유 영상의 자막 ${transcript.length.toLocaleString("ko-KR")}자를 가져왔습니다.`,"success");
+      } else {
+        els.transcript.value = item.snippet.description || "";
+        showNotice("자동 자막을 가져오지 못해 영상 설명을 넣었습니다. 글 생성 전 최종 승인 대본인지 확인해 주세요.","info");
+      }
+      els.charCount.textContent = `${els.transcript.value.length.toLocaleString("ko-KR")}자`;
+      setBadge(els.youtubeStatus,state.youtubeOwned ? "소유 채널 연결" : "공개 채널 조회",state.youtubeOwned ? "ok" : "warn");
+      els.sources.value = [...new Set([els.videoUrl.value,...els.sources.value.split(/\r?\n/).filter(Boolean)])].join("\n");
+      els.videoUrl.scrollIntoView({behavior:"smooth",block:"center"});
+    }
+
     function connectGoogle() {
       const settings = getSettings();
       if (!settings.clientId) {
@@ -798,7 +1122,7 @@ ${input.transcript}
       sessionStorage.setItem(SESSION_KEY,JSON.stringify(settings));
       state.googleTokenClient = google.accounts.oauth2.initTokenClient({
         client_id:settings.clientId,
-        scope:"https://www.googleapis.com/auth/blogger",
+        scope:GOOGLE_SCOPES,
         callback:async (response) => {
           if (response.error) {
             showNotice(`Google 연결 실패: ${response.error}`,"error");
@@ -809,7 +1133,15 @@ ${input.transcript}
             await resolveBlogId();
             setBadge(els.googleStatus,"연결됨","ok");
             updatePublishButton();
-            showNotice("Google Blogger 연결이 완료됐습니다.","success");
+            let youtubeMessage = "";
+            try {
+              const videos = await fetchQaPlusVideos();
+              youtubeMessage = ` QA PLUS 영상 ${videos.length}편을 불러왔습니다.`;
+            } catch (youtubeError) {
+              setBadge(els.youtubeStatus,"API 확인 필요","warn");
+              youtubeMessage = ` YouTube 연결 확인: ${youtubeError.message}`;
+            }
+            showNotice(`Google Blogger 연결이 완료됐습니다.${youtubeMessage}`,"success");
           } catch (error) {
             state.googleToken = "";
             setBadge(els.googleStatus,"확인 실패","warn");
@@ -927,7 +1259,11 @@ ${input.transcript}
     els.generateLocal.addEventListener("click",generateLocally);
     els.clearSource.addEventListener("click",clearSource);
     $("saveAiSettings").addEventListener("click",saveSettings);
+    $("importEconnyam").addEventListener("click",() => importEconnyamSettings(true));
     $("connectGoogle").addEventListener("click",connectGoogle);
+    els.loadYoutube.addEventListener("click",() => fetchQaPlusVideos().catch((error) => showNotice(error.message,"error")));
+    $("generateBroll").addEventListener("click",generateBrollImages);
+    $("copyBroll").addEventListener("click",copyBrollPrompts);
     $("publishBlogger").addEventListener("click",publishToBlogger);
     $("openBlogger").addEventListener("click",() => window.open("https://www.blogger.com/blog/posts/5694600166844060136","_blank","noopener,noreferrer"));
     $("copyHtml").addEventListener("click",copyHtml);
@@ -959,6 +1295,7 @@ ${input.transcript}
     });
 
     restoreSettings();
+    importEconnyamSettings(false);
   </script>
 </body>
 </html>
