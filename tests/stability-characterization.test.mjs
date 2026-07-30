@@ -31,7 +31,10 @@ assert.match(appScript, /const CLAUDE_SONNET_FALLBACK_MODEL = "claude-sonnet-5"/
 assert.match(appScript, /const CLAUDE_ARTICLE_MAX_CONTINUATIONS = 2/);
 assert.match(appScript, /const CLAUDE_EMPTY_SAME_MODEL_RETRIES = 2/);
 assert.match(appScript, /const EXPANSION_MAX_PASSES = 3/);
+assert.match(appScript, /const EXPANSION_RECOVERY_PASSES = 1/);
 assert.match(appScript, /const TARGET_LENGTH_RATIO = 0\.9/);
+assert.match(appScript, /const DEFAULT_TARGET_CHARS = 6000/);
+assert.match(appScript, /QUALITY_DENSITY_RULE/);
 assert.match(appScript, /activeModel = CLAUDE_SONNET_FALLBACK_MODEL/);
 assert.match(appScript, /settings\.claudeModel \|\| CLAUDE_OPUS_MODEL/);
 assert.match(appScript, /emptyResponses < CLAUDE_EMPTY_SAME_MODEL_RETRIES/);
@@ -40,12 +43,15 @@ assert.match(appScript, /callOpenAiChatDetailed/);
 assert.match(appScript, /4단계에서 Claude Opus·Sonnet 빈 응답이 반복되어 ChatGPT가 확장 조각을 대신 작성했습니다/);
 assert.match(appScript, /maxContinuations = CLAUDE_ARTICLE_MAX_CONTINUATIONS/);
 assert.match(appScript, /pass<=EXPANSION_MAX_PASSES/);
+assert.match(appScript, /EXPANSION_RECOVERY_PASSES/);
+assert.match(appScript, /isPipelineRunActive\(runId\)/);
 assert.match(appScript, /input\.targetChars \* TARGET_LENGTH_RATIO/);
 assert.match(appScript, /requiredTables = input\.targetChars >= 9000 \? 2 : 1/);
 assert.match(appScript, /insertAdjacentHTML\("beforebegin",additionHtml\)/);
 assert.match(appScript, /DISCLAIMER_TEXT_RE/);
-assert.match(swSource, /const CACHE_NAME = "qaplus-blog-studio-v16"/);
-assert.doesNotMatch(swSource, /qaplus-blog-studio-v15/);
+assert.match(html, /option value="6000" selected/);
+assert.match(swSource, /const CACHE_NAME = "qaplus-blog-studio-v17"/);
+assert.doesNotMatch(swSource, /qaplus-blog-studio-v16/);
 
 const emptyFallbackBlock = appScript.slice(
   appScript.indexOf("if (!result.content)"),
@@ -219,7 +225,9 @@ assert.equal(extractConst(appScript, "CLAUDE_OPUS_MODEL").replace(/"/g, ""), "cl
 assert.equal(extractConst(appScript, "CLAUDE_SONNET_FALLBACK_MODEL").replace(/"/g, ""), "claude-sonnet-5");
 assert.equal(extractConst(appScript, "CLAUDE_ARTICLE_MAX_CONTINUATIONS"), "2");
 assert.equal(extractConst(appScript, "EXPANSION_MAX_PASSES"), "3");
+assert.equal(extractConst(appScript, "EXPANSION_RECOVERY_PASSES"), "1");
 assert.equal(extractConst(appScript, "TARGET_LENGTH_RATIO"), "0.9");
+assert.equal(extractConst(appScript, "DEFAULT_TARGET_CHARS"), "6000");
 
 assert.match(appScript, /function delay\(ms\)/);
 assert.match(appScript, /function isRetryableHttpStatus\(status\)/);
