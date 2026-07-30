@@ -378,8 +378,8 @@
               </div>
               <div class="field">
                 <label for="aiModel">ChatGPT 분석 모델</label>
-                <input id="aiModel" value="gpt-5.6-terra" autocomplete="off" spellcheck="false">
-                <p class="hint">현재 정상 라우트인 Terra를 우선 사용합니다. 선택한 모델이 429·5xx·빈 응답이면 Terra와 Sol 중 남은 모델로 한 번 자동 전환합니다.</p>
+                <input id="aiModel" value="gpt-5.6-sol" autocomplete="off" spellcheck="false">
+                <p class="hint">선택 모델이 429·5xx·빈 응답 또는 일시적인 model_not_allowed이면 Sol·DeepSeek·GLM·Terra·Luna 중 정상 모델을 순서대로 찾아 자동 전환합니다.</p>
               </div>
               <div class="field">
                 <label for="claudeModel">Claude 작성·확장 모델</label>
@@ -754,8 +754,8 @@
     const ECONNYAM_STUDIO_KEY = "econnyam_settings_v2";
     const CHEAPSUB_PROXY_ORIGIN = "https://qa-plus-api.gohwansok.workers.dev";
     const DEFAULT_AI_ENDPOINT = `${CHEAPSUB_PROXY_ORIGIN}/v1/chat/completions`;
-    const DEFAULT_CHAT_MODEL = "gpt-5.6-terra";
-    const CHAT_MODEL_FALLBACKS = ["gpt-5.6-terra","gpt-5.6-sol"];
+    const DEFAULT_CHAT_MODEL = "gpt-5.6-sol";
+    const CHAT_MODEL_FALLBACKS = ["gpt-5.6-sol","deepseek-v4-pro","glm-5.2","gpt-5.6-terra","gpt-5.6-luna"];
     const GOOGLE_SCOPES = [
       "https://www.googleapis.com/auth/blogger",
       "https://www.googleapis.com/auth/youtube.readonly",
@@ -1121,7 +1121,11 @@
 
     function isRetryableChatError(error) {
       const status = Number(error?.status) || 0;
-      return status === 429 || status >= 500 || /응답 본문이 비어|Failed to fetch|NetworkError|Load failed|fetch failed/i.test(String(error?.message || error));
+      const message = String(error?.message || error);
+      return status === 429
+        || status >= 500
+        || (status === 403 && /model_not_allowed|일시적인 오류|temporar/i.test(message))
+        || /응답 본문이 비어|Failed to fetch|NetworkError|Load failed|fetch failed/i.test(message);
     }
 
     async function requestOpenAiChat(settings, messages, maxTokens, model) {
@@ -2419,6 +2423,9 @@ ${input.transcript}
       if (/HTTP 401|unauthorized|invalid.*(?:key|token)|authentication/i.test(raw)) {
         return `401 인증 실패 — CheapSub 키가 올바르지 않거나 만료됐습니다. 원문: ${raw}`;
       }
+      if (/model_not_allowed|일시적인 오류|temporar/i.test(raw)) {
+        return `CheapSub 모델 라우트가 일시적으로 요청을 받지 못했습니다. 앱이 지원 모델을 순서대로 확인했지만 모두 실패했습니다. 잠시 뒤 다시 시도해 주세요. 원문: ${raw}`;
+      }
       if (/HTTP 403|forbidden|permission/i.test(raw)) {
         return `403 권한 거부 — 해당 키의 모델/API 사용 권한을 확인해 주세요. 원문: ${raw}`;
       }
@@ -2702,8 +2709,7 @@ ${input.transcript}
         const aiKey = blogSettings.csk || studioSettings.openaiApiKey || "";
         const base = (blogSettings.base || studioSettings.openaiEndpoint || DEFAULT_AI_ENDPOINT).replace(/\/+$/,"");
         const endpoint = normalizeAiEndpoint(/\/chat\/completions$/i.test(base) ? base : `${base}/chat/completions`);
-        const importedModel = blogSettings.m1 || DEFAULT_CHAT_MODEL;
-        const model = importedModel === "gpt-5.6-sol" ? DEFAULT_CHAT_MODEL : importedModel;
+        const model = blogSettings.m1 || DEFAULT_CHAT_MODEL;
         const clientId = blogSettings.clientId || "";
         if (aiKey) els.aiKey.value = aiKey;
         if (endpoint) els.aiEndpoint.value = endpoint;
