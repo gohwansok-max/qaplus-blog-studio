@@ -9,6 +9,7 @@ import { extractConst, extractFunction, getAppScript, getHtmlSource } from "./li
 const appScript = getAppScript();
 const html = getHtmlSource();
 const swSource = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "sw.js"), "utf8");
+const resetSource = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "reset.html"), "utf8");
 
 new vm.Script(appScript, { filename: "index.html:inline-script" });
 
@@ -50,8 +51,18 @@ assert.match(appScript, /requiredTables = input\.targetChars >= 9000 \? 2 : 1/);
 assert.match(appScript, /insertAdjacentHTML\("beforebegin",additionHtml\)/);
 assert.match(appScript, /DISCLAIMER_TEXT_RE/);
 assert.match(html, /option value="6000" selected/);
-assert.match(swSource, /const CACHE_NAME = "qaplus-blog-studio-v19"/);
-assert.doesNotMatch(swSource, /qaplus-blog-studio-v18/);
+assert.match(html, /<meta name="qa-plus-app-version" content="20">/);
+assert.match(html, /id="appVersion"[^>]*>APP v20<\/span>/);
+assert.match(appScript, /const APP_VERSION = "20"/);
+assert.match(appScript, /new URL\("\.\/reset\.html",window\.location\.href\)/);
+assert.match(appScript, /serviceWorker\.register\(`\.\/sw\.js\?v=\$\{APP_VERSION\}`,\{scope:"\.\/",updateViaCache:"none"\}\)/);
+assert.match(swSource, /const CACHE_NAME = "qaplus-blog-studio-v20"/);
+assert.doesNotMatch(swSource, /qaplus-blog-studio-v19/);
+assert.match(swSource, /new Request\(new URL\(path, self\.location\.href\), \{ cache: "reload" \}\)/);
+assert.match(swSource, /new Request\(request, \{ cache: "no-store" \}\)/);
+assert.match(resetSource, /const FALLBACK_VERSION = "20"/);
+assert.match(resetSource, /registration\.unregister\(\)/);
+assert.match(resetSource, /key\.startsWith\("qaplus-blog-studio-"\)/);
 assert.match(appScript, /image\.persistent_url \|\| image\.proxy_url/);
 assert.match(appScript, /durableUrl\.pathname\.startsWith\("\/blog-images\/"\)/);
 assert.doesNotMatch(
