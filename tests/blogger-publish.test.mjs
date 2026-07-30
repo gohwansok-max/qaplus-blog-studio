@@ -103,8 +103,40 @@ assert.equal(accessContext.state.bloggerWritable, true);
 assert.equal(accessContext.result.hasAdminAccess, true);
 assert.match(accessCalls[1], /\/users\/self\/blogs\/5694600166844060136$/);
 
+const fetchVideosFunction = extractFunction(appScript, "fetchQaPlusVideos");
+const videoCalls = [];
+const videoContext = {
+  YOUTUBE_HANDLE:"@qaplus_haccp",
+  state:{googleToken:"test-token",youtubeOwned:false,youtubeChannel:null,youtubeVideos:[]},
+  els:{youtubeStatus:{},loadYoutube:{disabled:true}},
+  setBadge:() => {},
+  renderYoutubeVideos:() => {},
+  googleApi:async (url) => {
+    videoCalls.push(String(url));
+    if (String(url).includes("forHandle=")) {
+      return {items:[{id:"target-channel",contentDetails:{relatedPlaylists:{uploads:"uploads-list"}}}]};
+    }
+    if (String(url).includes("mine=true")) throw new Error("connected account has no YouTube channel");
+    return {items:[{contentDetails:{videoId:"video-1"},snippet:{title:"HACCP 공개 영상"}}]};
+  }
+};
+await vm.runInNewContext(`(async () => {
+  ${fetchVideosFunction}
+  result = await fetchQaPlusVideos();
+})()`, videoContext);
+assert.equal(videoContext.result.length,1);
+assert.equal(videoContext.state.youtubeOwned,false);
+assert.equal(videoContext.state.youtubeChannel.id,"target-channel");
+assert.equal(videoContext.els.loadYoutube.disabled,false);
+assert.ok(videoCalls.some((url) => url.includes("mine=true")));
+assert.ok(videoCalls.some((url) => url.includes("playlistItems")));
+
 assert.match(appScript, /GOOGLE_SCOPES[\s\S]*?\.join\(" "\)/);
 assert.match(appScript, /hasGrantedAllScopes/);
+assert.doesNotMatch(appScript, /youtube\.force-ssl/);
+assert.match(appScript, /youtubeOk = videos\.length > 0/);
+assert.match(appScript, /Blogger와 YouTube의 관리 계정이 달라도 정상/);
+assert.doesNotMatch(appScript, /QA PLUS 계정으로 다시 연결|채널을 소유한 Google 계정으로 다시 연결/);
 assert.match(appScript, /users\/self\/blogs\/\$\{encodeURIComponent\(blogId\)\}/);
 assert.match(appScript, /state\.bloggerWritable/);
 assert.match(appScript, /JSON\.stringify\(createBloggerPostPayload/);
