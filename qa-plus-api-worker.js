@@ -136,8 +136,12 @@ async function persistGeneratedImages(data, request, env) {
       throw new Error("생성 이미지 크기가 영구 저장 허용 범위를 벗어났습니다.");
     }
     const key = await imageKey(loaded.bytes,loaded.contentType);
-    await env.BLOG_IMAGES.put(key,loaded.bytes,{
-      httpMetadata:{
+    const storedBytes = loaded.bytes.buffer.slice(
+      loaded.bytes.byteOffset,
+      loaded.bytes.byteOffset + loaded.bytes.byteLength
+    );
+    await env.BLOG_IMAGES.put(key,storedBytes,{
+      metadata:{
         contentType:loaded.contentType,
         cacheControl:IMAGE_CACHE_CONTROL
       }
@@ -161,16 +165,15 @@ async function serveStoredImage(request, env) {
   const url = new URL(request.url);
   const key = decodeURIComponent(url.pathname.slice(PUBLIC_IMAGE_PREFIX.length));
   if (!key || key.includes("..")) return new Response("Not found",{status:404});
-  const object = await env.BLOG_IMAGES.get(key);
-  if (!object) return new Response("Not found",{status:404});
-  const headers = new Headers();
-  if (typeof object.writeHttpMetadata === "function") object.writeHttpMetadata(headers);
-  headers.set("Content-Type",headers.get("Content-Type") || "image/jpeg");
-  headers.set("Cache-Control",IMAGE_CACHE_CONTROL);
+  const stored = await env.BLOG_IMAGES.getWithMetadata(key,{type:"arrayBuffer"});
+  if (!stored?.value) return new Response("Not found",{status:404});
+  const headers = new Headers({
+    "Content-Type":stored.metadata?.contentType || "image/jpeg",
+    "Cache-Control":stored.metadata?.cacheControl || IMAGE_CACHE_CONTROL
+  });
   headers.set("Access-Control-Allow-Origin","*");
   headers.set("X-Content-Type-Options","nosniff");
-  if (object.httpEtag) headers.set("ETag",object.httpEtag);
-  return new Response(object.body,{status:200,headers});
+  return new Response(stored.value,{status:200,headers});
 }
 
 export default {

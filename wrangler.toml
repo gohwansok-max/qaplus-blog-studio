@@ -3,6 +3,6 @@ main = "qa-plus-api-worker.js"
 compatibility_date = "2026-07-29"
 workers_dev = true
 
-[[r2_buckets]]
+[[kv_namespaces]]
 binding = "BLOG_IMAGES"
-bucket_name = "qa-plus-blog-images"
+id = "c8b59db591e545049c2b1401a691d592"

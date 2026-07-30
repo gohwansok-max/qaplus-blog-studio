@@ -10,27 +10,26 @@ const wranglerSource = fs.readFileSync(path.join(root,"wrangler.toml"),"utf8");
 const workerModuleUrl = "data:text/javascript;base64," + Buffer.from(workerSource).toString("base64");
 const worker = (await import(workerModuleUrl)).default;
 
-function createR2Mock() {
+function createKvMock() {
   const objects = new Map();
   return {
     objects,
-    bucket:{
+    namespace:{
       async put(key,body,options = {}) {
         objects.set(key,{
           bytes:new Uint8Array(body),
-          httpMetadata:options.httpMetadata || {}
+          metadata:options.metadata || {}
         });
       },
-      async get(key) {
+      async getWithMetadata(key) {
         const item = objects.get(key);
-        if (!item) return null;
+        if (!item) return {value:null,metadata:null};
         return {
-          body:item.bytes,
-          httpEtag:'"test-etag"',
-          writeHttpMetadata(headers) {
-            if (item.httpMetadata.contentType) headers.set("Content-Type",item.httpMetadata.contentType);
-            if (item.httpMetadata.cacheControl) headers.set("Cache-Control",item.httpMetadata.cacheControl);
-          }
+          value:item.bytes.buffer.slice(
+            item.bytes.byteOffset,
+            item.bytes.byteOffset + item.bytes.byteLength
+          ),
+          metadata:item.metadata
         };
       }
     }
@@ -53,7 +52,7 @@ const originalFetch = globalThis.fetch;
 
 try {
   {
-    const r2 = createR2Mock();
+    const kv = createKvMock();
     const imageBytes = new Uint8Array([0xff,0xd8,0xff,0xe0,0x00,0x10,0x4a,0x46,0x49,0x46,0xff,0xd9]);
     globalThis.fetch = async (url) => {
       assert.match(String(url),/api\.cheapsub\.im\/v1\/images\/generations$/);
@@ -65,7 +64,7 @@ try {
       });
     };
 
-    const response = await worker.fetch(generationRequest(),{BLOG_IMAGES:r2.bucket});
+    const response = await worker.fetch(generationRequest(),{BLOG_IMAGES:kv.namespace});
     assert.equal(response.status,200);
     const data = await response.json();
     assert.equal(data.data.length,1);
@@ -73,9 +72,9 @@ try {
     assert.equal(data.data[0].url,data.data[0].persistent_url);
     assert.equal(data.data[0].proxy_url,data.data[0].persistent_url);
     assert.equal("b64_json" in data.data[0],false);
-    assert.equal(r2.objects.size,1);
+    assert.equal(kv.objects.size,1);
 
-    const publicImage = await worker.fetch(new Request(data.data[0].persistent_url),{BLOG_IMAGES:r2.bucket});
+    const publicImage = await worker.fetch(new Request(data.data[0].persistent_url),{BLOG_IMAGES:kv.namespace});
     assert.equal(publicImage.status,200);
     assert.equal(publicImage.headers.get("Content-Type"),"image/jpeg");
     assert.match(publicImage.headers.get("Cache-Control"),/max-age=31536000/);
@@ -84,7 +83,7 @@ try {
   }
 
   {
-    const r2 = createR2Mock();
+    const kv = createKvMock();
     const imageBytes = new Uint8Array([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a]);
     let fetchCount = 0;
     globalThis.fetch = async (url) => {
@@ -104,12 +103,12 @@ try {
       });
     };
 
-    const response = await worker.fetch(generationRequest(),{BLOG_IMAGES:r2.bucket});
+    const response = await worker.fetch(generationRequest(),{BLOG_IMAGES:kv.namespace});
     const data = await response.json();
     assert.equal(response.status,200);
     assert.match(data.data[0].persistent_url,/\.png$/);
     assert.equal(fetchCount,2);
-    assert.equal(r2.objects.size,1);
+    assert.equal(kv.objects.size,1);
   }
 
   {
@@ -119,20 +118,20 @@ try {
       status:200,
       headers:{"Content-Type":"application/json"}
     });
-    const r2 = createR2Mock();
-    const response = await worker.fetch(generationRequest(),{BLOG_IMAGES:r2.bucket});
+    const kv = createKvMock();
+    const response = await worker.fetch(generationRequest(),{BLOG_IMAGES:kv.namespace});
     assert.equal(response.status,502);
     const data = await response.json();
     assert.match(data.error.message,/영구 저장소/);
-    assert.equal(r2.objects.size,0);
+    assert.equal(kv.objects.size,0);
   }
 } finally {
   globalThis.fetch = originalFetch;
 }
 
-assert.match(wranglerSource,/\[\[r2_buckets\]\]/);
+assert.match(wranglerSource,/\[\[kv_namespaces\]\]/);
 assert.match(wranglerSource,/binding = "BLOG_IMAGES"/);
-assert.match(wranglerSource,/bucket_name = "qa-plus-blog-images"/);
+assert.match(wranglerSource,/id = "c8b59db591e545049c2b1401a691d592"/);
 assert.match(workerSource,/const PUBLIC_IMAGE_PREFIX = "\/blog-images\/"/);
 assert.match(workerSource,/persistGeneratedImages/);
 
