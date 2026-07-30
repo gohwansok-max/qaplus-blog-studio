@@ -1913,14 +1913,17 @@
       }
       const image = data.data && data.data[0];
       if (!image) throw createImageServiceError("CheapSub 이미지 응답에 data[0]이 없습니다.",502);
-      const candidate = image.proxy_url || image.url || image.download_url;
+      const candidate = image.persistent_url || image.proxy_url || image.url || image.download_url;
       if (candidate) {
         const resolved = new URL(candidate,settings.endpoint).toString();
         if (!/^https:\/\//i.test(resolved)) throw new Error("Blogger에 삽입할 HTTPS 이미지 주소를 받지 못했습니다.");
+        const durableUrl = new URL(resolved);
+        if (durableUrl.origin !== CHEAPSUB_PROXY_ORIGIN || !durableUrl.pathname.startsWith("/blog-images/")) {
+          throw new Error("생성 이미지를 모바일용 영구 저장소에 보관하지 못했습니다. 이미지 단계만 다시 실행해 주세요.");
+        }
         return resolved;
       }
-      if (image.b64_json) return "data:image/jpeg;base64," + image.b64_json;
-      throw new Error("CheapSub 이미지 응답에 proxy_url, url, download_url 또는 b64_json이 없습니다.");
+      throw new Error("CheapSub 이미지 응답에 영구 저장된 이미지 주소가 없습니다.");
     };
 
     async function requestBrollImageWithRetry(settings, item, onRetry) {
