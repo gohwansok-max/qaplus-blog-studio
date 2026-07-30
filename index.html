@@ -378,7 +378,8 @@
               </div>
               <div class="field">
                 <label for="aiModel">ChatGPT 분석 모델</label>
-                <input id="aiModel" value="gpt-5.6-sol" autocomplete="off" spellcheck="false">
+                <input id="aiModel" value="gpt-5.6-terra" autocomplete="off" spellcheck="false">
+                <p class="hint">현재 정상 라우트인 Terra를 우선 사용합니다. 선택한 모델이 429·5xx·빈 응답이면 Terra와 Sol 중 남은 모델로 한 번 자동 전환합니다.</p>
               </div>
               <div class="field">
                 <label for="claudeModel">Claude 작성·확장 모델</label>
@@ -753,6 +754,8 @@
     const ECONNYAM_STUDIO_KEY = "econnyam_settings_v2";
     const CHEAPSUB_PROXY_ORIGIN = "https://qa-plus-api.gohwansok.workers.dev";
     const DEFAULT_AI_ENDPOINT = `${CHEAPSUB_PROXY_ORIGIN}/v1/chat/completions`;
+    const DEFAULT_CHAT_MODEL = "gpt-5.6-terra";
+    const CHAT_MODEL_FALLBACKS = ["gpt-5.6-terra","gpt-5.6-sol"];
     const GOOGLE_SCOPES = [
       "https://www.googleapis.com/auth/blogger",
       "https://www.googleapis.com/auth/youtube.readonly",
@@ -1111,15 +1114,75 @@
       return url.toString();
     };
 
-    async function callOpenAiChat(settings, messages, maxTokens = 8000) {
-      const response = await fetch(cheapSubEndpoint(settings.endpoint,"chat/completions"),{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer " + settings.aiKey},body:JSON.stringify({model:settings.model,messages,max_tokens:maxTokens})});
+    function chatModelCandidates(preferredModel = "") {
+      const preferred = String(preferredModel || "").trim() || DEFAULT_CHAT_MODEL;
+      return [preferred,...CHAT_MODEL_FALLBACKS].filter((model,index,items) => model && items.indexOf(model) === index);
+    }
+
+    function isRetryableChatError(error) {
+      const status = Number(error?.status) || 0;
+      return status === 429 || status >= 500 || /응답 본문이 비어|Failed to fetch|NetworkError|Load failed|fetch failed/i.test(String(error?.message || error));
+    }
+
+    async function requestOpenAiChat(settings, messages, maxTokens, model) {
+      let response;
+      try {
+        response = await fetch(cheapSubEndpoint(settings.endpoint,"chat/completions"),{
+          method:"POST",
+          headers:{"Content-Type":"application/json","Authorization":"Bearer " + settings.aiKey},
+          body:JSON.stringify({model,messages,max_tokens:maxTokens})
+        });
+      } catch (cause) {
+        const error = new Error("ChatGPT 서버에 연결하지 못했습니다: " + String(cause?.message || cause));
+        error.status = 0;
+        throw error;
+      }
       const raw = await response.text();
-      if (!response.ok) throw new Error("ChatGPT 요청 실패 (" + response.status + "): " + raw.slice(0,300));
+      if (!response.ok) {
+        const error = new Error("ChatGPT 요청 실패 (" + response.status + "): " + raw.slice(0,300));
+        error.status = response.status;
+        throw error;
+      }
       let data;
-      try { data = JSON.parse(raw); } catch (_) { throw new Error("ChatGPT 응답이 JSON 형식이 아닙니다: " + raw.slice(0,220)); }
+      try { data = JSON.parse(raw); } catch (_) {
+        const error = new Error("ChatGPT 응답이 JSON 형식이 아닙니다: " + raw.slice(0,220));
+        error.status = 502;
+        throw error;
+      }
       const content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
-      if (!content) throw new Error("ChatGPT 응답 본문이 비어 있습니다.");
-      return content;
+      if (!content) {
+        const error = new Error("ChatGPT 응답 본문이 비어 있습니다.");
+        error.status = 502;
+        throw error;
+      }
+      return {content,model};
+    }
+
+    function adoptHealthyChatModel(settings, model) {
+      if (!model || model === settings.model) return false;
+      els.aiModel.value = model;
+      persistSettings({...settings,model},"auto-fallback");
+      return true;
+    }
+
+    async function callOpenAiChatDetailed(settings, messages, maxTokens = 8000) {
+      let lastError;
+      const candidates = chatModelCandidates(settings.model);
+      for (let index=0; index<candidates.length; index += 1) {
+        const model = candidates[index];
+        try {
+          const result = await requestOpenAiChat(settings,messages,maxTokens,model);
+          return {...result,fallback:adoptHealthyChatModel(settings,model)};
+        } catch (error) {
+          lastError = error;
+          if (index >= candidates.length - 1 || !isRetryableChatError(error)) break;
+        }
+      }
+      throw lastError;
+    }
+
+    async function callOpenAiChat(settings, messages, maxTokens = 8000) {
+      return (await callOpenAiChatDetailed(settings,messages,maxTokens)).content;
     };
 
     async function callClaude(settings, prompt, maxTokens = 12000, onProgress = null, onChunk = null, requestMessages = null) {
@@ -1403,17 +1466,18 @@
         const message = String(error?.message || error || "");
         if (!/빈 응답|응답 본문이 비어|Opus·Sonnet/i.test(message)) throw error;
         if (typeof onProgress === "function") onProgress("Claude 빈 응답 반복 · ChatGPT 최종 안전망으로 전환");
-        const fallback = await callOpenAiChat(
-          {...settings,model:"gpt-5.6-sol"},
+        const fallbackResult = await callOpenAiChatDetailed(
+          settings,
           [{role:"user",content:prompt}],
           10000
         );
+        const fallback = fallbackResult.content;
         const fallbackWarning = "4단계에서 Claude Opus·Sonnet 빈 응답이 반복되어 ChatGPT가 확장 조각을 대신 작성했습니다.";
         if (!String(state.pipeline.warning || "").includes(fallbackWarning)) {
           state.pipeline.warning = [state.pipeline.warning,fallbackWarning].filter(Boolean).join(" ");
         }
         showNotice(fallbackWarning,"info");
-        if (typeof onChunk === "function") onChunk(fallback,"gpt-5.6-sol");
+        if (typeof onChunk === "function") onChunk(fallback,fallbackResult.model);
         return fallback;
       }
     };
@@ -2277,7 +2341,7 @@ ${input.transcript}
       try { saved = JSON.parse(sessionStorage.getItem(SESSION_KEY) || "{}"); } catch (_) {}
       return {
         endpoint:normalizeAiEndpoint(els.aiEndpoint.value.trim() || saved.endpoint || DEFAULT_AI_ENDPOINT),
-        model:els.aiModel.value.trim() || saved.model || "gpt-5.6-sol",
+        model:els.aiModel.value.trim() || saved.model || DEFAULT_CHAT_MODEL,
         claudeModel:els.claudeModel.value.trim() || saved.claudeModel || "claude-opus-5",
         imageModel:els.imageModel.value.trim() || saved.imageModel || "gpt-image-2",
         aiKey:els.aiKey.value.trim() || saved.aiKey || "",
@@ -2364,6 +2428,9 @@ ${input.transcript}
       if (/HTTP 404|model.*not.*found|unknown model/i.test(raw)) {
         return `모델 또는 엔드포인트를 찾지 못했습니다. 원문: ${raw}`;
       }
+      if (/HTTP 5\d\d|요청 실패 \(5\d\d\)|error code: 5\d\d/i.test(raw)) {
+        return `CheapSub 모델 라우트가 일시적으로 응답하지 않습니다. 앱이 예비 모델까지 확인했지만 모두 실패했습니다. 잠시 뒤 다시 시도해 주세요. 원문: ${raw}`;
+      }
       if (/Failed to fetch|NetworkError|Load failed/i.test(raw)) {
         return `QA PLUS 중계 서버의 응답을 읽지 못했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요. 원문: ${raw}`;
       }
@@ -2400,24 +2467,23 @@ ${input.transcript}
         return false;
       }
       setVerifyStatus("ai","확인 중","warn");
-      setActionFeedback(els.aiActionFeedback,"CheapSub에 실제 요청을 보내는 중...",`${settings.model} · ${settings.endpoint}`,"info",true);
+      setActionFeedback(els.aiActionFeedback,"CheapSub에 실제 요청을 보내는 중...",`${settings.model} · 장애 시 자동 모델 전환`,"info",true);
       try {
-        const response = await fetch(settings.endpoint,{
-          method:"POST",
-          headers:{"Content-Type":"application/json","Authorization":"Bearer " + settings.aiKey},
-          body:JSON.stringify({
-            model:settings.model,
-            messages:[{role:"user",content:"Reply with exactly QA_PLUS_OK"}],
-            max_tokens:16
-          })
-        });
-        const raw = await response.text();
-        if (!response.ok) throw new Error("HTTP " + response.status + ": " + raw.slice(0,240));
-        const data = JSON.parse(raw);
-        if (!data.choices || !data.choices[0] || !data.choices[0].message) throw new Error("응답 형식이 올바르지 않습니다: " + raw.slice(0,200));
+        const result = await callOpenAiChatDetailed(
+          settings,
+          [{role:"user",content:"Reply with exactly QA_PLUS_OK"}],
+          16
+        );
         setVerifyStatus("ai","정상 응답","ok");
         setBadge(els.aiStatus,"연결 검증됨","ok");
-        setActionFeedback(els.aiActionFeedback,"CheapSub 연결 성공 ✓",`${settings.model} 모델이 정상 응답했습니다.`,"success");
+        setActionFeedback(
+          els.aiActionFeedback,
+          "CheapSub 연결 성공 ✓",
+          result.fallback
+            ? `${settings.model} 장애를 감지해 ${result.model} 모델로 자동 전환했습니다.`
+            : `${result.model} 모델이 정상 응답했습니다.`,
+          "success"
+        );
         return true;
       } catch (error) {
         if (/Failed to fetch|NetworkError|Load failed/i.test(String(error.message || ""))) {
@@ -2636,7 +2702,8 @@ ${input.transcript}
         const aiKey = blogSettings.csk || studioSettings.openaiApiKey || "";
         const base = (blogSettings.base || studioSettings.openaiEndpoint || DEFAULT_AI_ENDPOINT).replace(/\/+$/,"");
         const endpoint = normalizeAiEndpoint(/\/chat\/completions$/i.test(base) ? base : `${base}/chat/completions`);
-        const model = blogSettings.m1 || "gpt-5.6-sol";
+        const importedModel = blogSettings.m1 || DEFAULT_CHAT_MODEL;
+        const model = importedModel === "gpt-5.6-sol" ? DEFAULT_CHAT_MODEL : importedModel;
         const clientId = blogSettings.clientId || "";
         if (aiKey) els.aiKey.value = aiKey;
         if (endpoint) els.aiEndpoint.value = endpoint;
