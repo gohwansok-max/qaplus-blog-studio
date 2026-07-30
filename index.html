@@ -756,11 +756,33 @@
     const DEFAULT_AI_ENDPOINT = `${CHEAPSUB_PROXY_ORIGIN}/v1/chat/completions`;
     const DEFAULT_CHAT_MODEL = "gpt-5.6-sol";
     const CHAT_MODEL_FALLBACKS = ["gpt-5.6-sol","deepseek-v4-pro","glm-5.2","gpt-5.6-terra","gpt-5.6-luna"];
+    // Claude empty-response order must stay Opus → Opus retry → Sonnet → (stage4) gpt-5.6-sol.
+    const CLAUDE_OPUS_MODEL = "claude-opus-5";
+    const CLAUDE_SONNET_FALLBACK_MODEL = "claude-sonnet-5";
+    const CLAUDE_ARTICLE_MAX_CONTINUATIONS = 2;
+    const CLAUDE_EMPTY_SAME_MODEL_RETRIES = 2;
+    const EXPANSION_MAX_PASSES = 3;
+    const EXPANSION_CHUNK_MAX_TOKENS = 10000;
+    const TARGET_LENGTH_RATIO = 0.9;
+    const DISCLAIMER_TEXT_RE = /일반 실무|최신 기준|면책/;
     const GOOGLE_SCOPES = [
       "https://www.googleapis.com/auth/blogger",
       "https://www.googleapis.com/auth/youtube.readonly",
       "https://www.googleapis.com/auth/youtube.force-ssl"
     ].join(" ");
+
+    function delay(ms) {
+      return new Promise((resolve) => window.setTimeout(resolve, ms));
+    }
+
+    function isRetryableHttpStatus(status) {
+      const code = Number(status) || 0;
+      return code === 408 || code === 409 || code === 425 || code === 429 || code >= 500;
+    }
+
+    function safeJsonParse(raw, fallback = null) {
+      try { return JSON.parse(raw); } catch (_) { return fallback; }
+    }
 
     const BROLL_ZONES = {
       "HACCP":[
@@ -851,7 +873,7 @@
           if (registration) await registration.update();
         } catch (_) {}
       }
-      await new Promise((resolve) => window.setTimeout(resolve,350));
+      await delay(350);
       const refreshedUrl = new URL(window.location.href);
       refreshedUrl.searchParams.set("appRefresh",Date.now().toString());
       window.location.replace(refreshedUrl.toString());
@@ -1196,7 +1218,7 @@
       const safeMaxTokens = Math.max(256,Math.min(Number(maxTokens) || 12000,16000));
       const retryDelays = [0,1500,3500];
       let activeEndpoint = directEndpoint;
-      let activeModel = settings.claudeModel || "claude-opus-5";
+      let activeModel = settings.claudeModel || CLAUDE_OPUS_MODEL;
       let usedProxyFallback = false;
       let usedTimeoutFallback = false;
       let opusTimeouts = 0;
@@ -1232,8 +1254,8 @@
           if (!line.startsWith("data:")) return;
           const payload = line.slice(5).trimStart();
           if (!payload || payload === "[DONE]") return;
-          let event;
-          try { event = JSON.parse(payload); } catch (_) { return; }
+          const event = safeJsonParse(payload);
+          if (!event) return;
           if (event.type === "error" || event.error) {
             streamError = event.error?.message || event.message || "알 수 없는 스트림 오류";
             return;
@@ -1290,12 +1312,12 @@
             activeEndpoint = proxyEndpoint;
             usedProxyFallback = true;
             report("CheapSub 직접 연결 실패 → QA PLUS 중계 스트리밍 전환");
-            await new Promise((resolve) => window.setTimeout(resolve,400));
+            await delay(400);
             continue;
           }
           if (attempt < retryDelays.length - 1) {
             report("Claude 스트리밍 네트워크 오류 · 자동 재시도 " + (attempt + 1) + "/2");
-            await new Promise((resolve) => window.setTimeout(resolve,retryDelays[attempt + 1]));
+            await delay(retryDelays[attempt + 1]);
             continue;
           }
           throw new Error("Claude 스트리밍 연결이 3회 실패했습니다. 원문: " + error.message);
@@ -1304,29 +1326,26 @@
         if (!response.ok) {
           const raw = await response.text();
           let apiMessage = raw.slice(0,500).replace(/\s+/g," ").trim();
-          try {
-            const errorData = JSON.parse(raw);
-            apiMessage = errorData.error?.message || errorData.message || apiMessage;
-          } catch (_) {}
+          const errorData = safeJsonParse(raw);
+          if (errorData) apiMessage = errorData.error?.message || errorData.message || apiMessage;
           if (response.status === 524 && /claude-opus/i.test(activeModel)) {
             opusTimeouts += 1;
             if (opusTimeouts === 1 && !usedProxyFallback && attempt < retryDelays.length - 1) {
               report("Claude Opus 524 · 직접 스트리밍 재시도 1/2");
-              await new Promise((resolve) => window.setTimeout(resolve,900));
+              await delay(900);
               continue;
             }
             if (!usedTimeoutFallback && attempt < retryDelays.length - 1) {
-              activeModel = "claude-sonnet-5";
+              activeModel = CLAUDE_SONNET_FALLBACK_MODEL;
               usedTimeoutFallback = true;
               report("Opus 스트리밍 524 반복 → Sonnet 최종 예비 전환");
-              await new Promise((resolve) => window.setTimeout(resolve,500));
+              await delay(500);
               continue;
             }
           }
-          const retryable = response.status === 408 || response.status === 409 || response.status === 425 || response.status === 429 || response.status >= 500;
-          if (retryable && attempt < retryDelays.length - 1) {
+          if (isRetryableHttpStatus(response.status) && attempt < retryDelays.length - 1) {
             report("Claude " + response.status + " · 스트리밍 자동 재시도 " + (attempt + 1) + "/2");
-            await new Promise((resolve) => window.setTimeout(resolve,retryDelays[attempt + 1]));
+            await delay(retryDelays[attempt + 1]);
             continue;
           }
           let guidance = "";
@@ -1350,27 +1369,28 @@
             activeEndpoint = proxyEndpoint;
             usedProxyFallback = true;
             report("CheapSub 직접 스트림 중단 → QA PLUS 중계 스트리밍 전환");
-            await new Promise((resolve) => window.setTimeout(resolve,400));
+            await delay(400);
             continue;
           }
           if (attempt < retryDelays.length - 1) {
             report("Claude 스트림 중단 · 자동 재시도 " + (attempt + 1) + "/2");
-            await new Promise((resolve) => window.setTimeout(resolve,retryDelays[attempt + 1]));
+            await delay(retryDelays[attempt + 1]);
             continue;
           }
           throw error;
         }
         if (!result.content) {
           emptyResponses += 1;
-          if (emptyResponses < 2 && attempt < retryDelays.length - 1) {
+          // Keep Opus → Opus retry → Sonnet order; ChatGPT safety net lives in callExpansionChunk only.
+          if (emptyResponses < CLAUDE_EMPTY_SAME_MODEL_RETRIES && attempt < retryDelays.length - 1) {
             report("Claude 빈 응답 감지 · 같은 모델로 자동 재시도");
-            await new Promise((resolve) => window.setTimeout(resolve,retryDelays[attempt + 1]));
+            await delay(retryDelays[attempt + 1]);
             continue;
           }
           if (/claude-opus/i.test(activeModel) && attempt < retryDelays.length - 1) {
-            activeModel = "claude-sonnet-5";
+            activeModel = CLAUDE_SONNET_FALLBACK_MODEL;
             report("Claude Opus 빈 응답 반복 · Sonnet 예비 모델로 자동 전환");
-            await new Promise((resolve) => window.setTimeout(resolve,400));
+            await delay(400);
             continue;
           }
           throw new Error("Claude Opus·Sonnet 빈 응답이 반복되었습니다. stop_reason: " + (result.stopReason || "없음"));
@@ -1425,7 +1445,7 @@
     }
 
     async function callClaudeArticle(settings, prompt, maxTokens = 12000, onProgress = null, onChunk = null) {
-      const maxContinuations = 2;
+      const maxContinuations = CLAUDE_ARTICLE_MAX_CONTINUATIONS;
       let received = "";
       for (let pass=0; pass<=maxContinuations; pass += 1) {
         const requestMessages = pass === 0 ? null : [
@@ -1454,11 +1474,11 @@
         );
         received = mergeClaudeContinuation(received,part);
         received = normalizeClaudeArticleEnvelope(received);
-        if (typeof onChunk === "function") onChunk(received,settings.claudeModel || "claude-opus-5");
+        if (typeof onChunk === "function") onChunk(received,settings.claudeModel || CLAUDE_OPUS_MODEL);
         if (isClaudeArticleComplete(received)) return received;
         if (pass < maxContinuations) {
           if (typeof onProgress === "function") onProgress("응답 잘림 감지 · Opus 자동 이어쓰기 " + (pass + 1) + "/" + maxContinuations);
-          await new Promise((resolve) => window.setTimeout(resolve,350));
+          await delay(350);
         }
       }
       throw new Error("Claude 글이 두 번의 자동 이어쓰기 후에도 끝까지 완성되지 않았습니다. 결과 창의 수신 원문을 확인한 뒤 실패 단계부터 다시 실행해 주세요.");
@@ -1466,7 +1486,7 @@
 
     async function callExpansionChunk(settings, prompt, onProgress = null, onChunk = null) {
       try {
-        return await callClaude(settings,prompt,10000,onProgress,onChunk);
+        return await callClaude(settings,prompt,EXPANSION_CHUNK_MAX_TOKENS,onProgress,onChunk);
       } catch (error) {
         const message = String(error?.message || error || "");
         if (!/빈 응답|응답 본문이 비어|Opus·Sonnet/i.test(message)) throw error;
@@ -1474,7 +1494,7 @@
         const fallbackResult = await callOpenAiChatDetailed(
           settings,
           [{role:"user",content:prompt}],
-          10000
+          EXPANSION_CHUNK_MAX_TOKENS
         );
         const fallback = fallbackResult.content;
         const fallbackWarning = "4단계에서 Claude Opus·Sonnet 빈 응답이 반복되어 ChatGPT가 확장 조각을 대신 작성했습니다.";
@@ -1603,7 +1623,7 @@
     };
 
     function buildClaudeExpansionChunkPrompt(input, transcript, analysis, current, currentLength, pass, requiredTables) {
-      const minimum = Math.ceil(input.targetChars * 0.9);
+      const minimum = Math.ceil(input.targetChars * TARGET_LENGTH_RATIO);
       const remaining = Math.max(0,minimum - currentLength);
       const chunkTarget = Math.min(4200,Math.max(2200,remaining + 500));
       const currentTables = (String(current.html || "").match(/<table[\s>]/gi) || []).length;
@@ -1662,7 +1682,7 @@
       const article = root.querySelector("article");
       const target = article || root;
       const blocks = [...target.querySelectorAll("p,blockquote")];
-      const disclaimer = blocks.reverse().find((element) => /일반 실무|최신 기준|면책/.test(element.textContent || ""));
+      const disclaimer = blocks.reverse().find((element) => DISCLAIMER_TEXT_RE.test(element.textContent || ""));
       if (disclaimer) disclaimer.insertAdjacentHTML("beforebegin",additionHtml);
       else target.insertAdjacentHTML("beforeend",additionHtml);
       return root.innerHTML;
@@ -1835,8 +1855,8 @@
     }
 
     async function waitForImageRetry(attempt) {
-      const delay = Math.min(2600,900 * Math.pow(2,Math.max(0,attempt - 1)));
-      await new Promise((resolve) => window.setTimeout(resolve,delay));
+      const delayMs = Math.min(2600,900 * Math.pow(2,Math.max(0,attempt - 1)));
+      await delay(delayMs);
     }
 
     async function requestBrollImage(settings, item) {
@@ -2215,7 +2235,7 @@ ${input.transcript}
           delete state.pipeline.stageErrors[4];
           delete state.pipeline.stageStreams[4];
           updatePipelineOutputs();
-          const minimumLength = Math.ceil(input.targetChars * 0.9);
+          const minimumLength = Math.ceil(input.targetChars * TARGET_LENGTH_RATIO);
           const streamExpanded = (chunk) => { state.pipeline.stageStreams[4] = chunk; updatePipelineOutputs(); };
           setBusy(true,"4/5 Claude 2차 살붙이기 중...");
           setPipelineStage(4,"running","Opus 직접 스트리밍 확장 중");
@@ -2229,14 +2249,14 @@ ${input.transcript}
           let finalLength = visibleTextLength(expanded.html);
           const requiredTables = input.targetChars >= 9000 ? 2 : 1;
           let tableCount = (expanded.html.match(/<table[\s>]/gi) || []).length;
-          for (let pass=1; pass<=3 && (pass === 1 || finalLength < minimumLength || tableCount < requiredTables); pass += 1) {
+          for (let pass=1; pass<=EXPANSION_MAX_PASSES && (pass === 1 || finalLength < minimumLength || tableCount < requiredTables); pass += 1) {
             state.pipeline.stageStreams[4] = "";
-            setBusy(true,"4/5 Claude 분할 살붙이기 " + pass + "/3...");
-            setPipelineStage(4,"running",finalLength.toLocaleString("ko-KR") + "자 · 확장 조각 " + pass + "/3 작성 중");
+            setBusy(true,"4/5 Claude 분할 살붙이기 " + pass + "/" + EXPANSION_MAX_PASSES + "...");
+            setPipelineStage(4,"running",finalLength.toLocaleString("ko-KR") + "자 · 확장 조각 " + pass + "/" + EXPANSION_MAX_PASSES + " 작성 중");
             const additionRaw = await callExpansionChunk(
               settings,
               buildClaudeExpansionChunkPrompt(input,state.pipeline.transcript,state.pipeline.analysis,expanded,finalLength,pass,requiredTables),
-              (detail) => setPipelineStage(4,"running","확장 " + pass + "/3 · " + detail),
+              (detail) => setPipelineStage(4,"running","확장 " + pass + "/" + EXPANSION_MAX_PASSES + " · " + detail),
               streamExpanded
             );
             const additionHtml = parseClaudeAppendHtml(additionRaw);
@@ -2963,7 +2983,7 @@ ${input.transcript}
     }
 
     function getPublishedHistory() {
-      try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || "{}"); } catch (_) { return {}; }
+      return safeJsonParse(localStorage.getItem(HISTORY_KEY) || "{}", {}) || {};
     }
 
     function updatePublishButton() {
