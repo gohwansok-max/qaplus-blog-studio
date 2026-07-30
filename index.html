@@ -539,11 +539,11 @@
                 <div class="field">
                   <label for="targetLength">최종 글 길이</label>
                   <select id="targetLength">
-                    <option value="6000">넉넉하게 · 6,000자</option>
-                    <option value="9000" selected>아주 풍성하게 · 9,000자 (권장)</option>
+                    <option value="6000" selected>안정 권장 · 6,000자 (밀도 우선)</option>
+                    <option value="9000">아주 풍성하게 · 9,000자</option>
                     <option value="12000">최대 · 12,000자</option>
                   </select>
-                  <p class="help">Claude 1차 기본 글을 2차에서 사례·표·FAQ로 확장하고 목표 길이를 검사합니다.</p>
+                  <p class="help">기본값은 안정성과 문장 밀도를 위해 6,000자입니다. 길이를 늘려도 군더더기 없이 실무 문장만 확장합니다.</p>
                 </div>
                 <div class="field full">
                   <label for="transcript">보조 대본 또는 원문 (선택)</label>
@@ -762,9 +762,13 @@
     const CLAUDE_ARTICLE_MAX_CONTINUATIONS = 2;
     const CLAUDE_EMPTY_SAME_MODEL_RETRIES = 2;
     const EXPANSION_MAX_PASSES = 3;
+    const EXPANSION_RECOVERY_PASSES = 1;
     const EXPANSION_CHUNK_MAX_TOKENS = 10000;
     const TARGET_LENGTH_RATIO = 0.9;
+    const DEFAULT_TARGET_CHARS = 6000;
     const DISCLAIMER_TEXT_RE = /일반 실무|최신 기준|면책/;
+    // Shorter targets must still keep every sentence actionable — never pad for length.
+    const QUALITY_DENSITY_RULE = "분량 채우기용 군더더기·동어반복·빈 수식어는 금지합니다. 실무자가 바로 적용할 수 있는 구체적 문장만 쓰고, 한 문장에 하나의 실무 판단 또는 조치가 드러나야 합니다.";
     const GOOGLE_SCOPES = [
       "https://www.googleapis.com/auth/blogger",
       "https://www.googleapis.com/auth/youtube.readonly",
@@ -827,7 +831,7 @@
       busy: false,
       installPrompt:null,
       lastAiError:"",
-      pipeline:{transcript:"",analysis:null,draft:null,expanded:null,images:[],stageErrors:{},stageStreams:{},failedStep:0,running:false,inputFingerprint:"",warning:""},
+      pipeline:{transcript:"",analysis:null,draft:null,expanded:null,images:[],stageErrors:{},stageStreams:{},failedStep:0,running:false,runId:0,inputFingerprint:"",warning:""},
       verification:{settings:false,ai:false,gemini:false,google:false,blogger:false,youtube:false,links:true,checking:false}
     };
 
@@ -1052,10 +1056,32 @@
     };
 
     function clearPipelineState(input) {
-      state.pipeline = {transcript:"",analysis:null,draft:null,expanded:null,images:[],stageErrors:{},stageStreams:{},failedStep:0,running:false,inputFingerprint:pipelineFingerprint(input),warning:""};
+      state.pipeline = {transcript:"",analysis:null,draft:null,expanded:null,images:[],stageErrors:{},stageStreams:{},failedStep:0,running:false,runId:state.pipeline.runId || 0,inputFingerprint:pipelineFingerprint(input),warning:""};
       resetPipelineUi();
       setStep(1);
     };
+
+    function isPipelineRunActive(runId) {
+      return state.pipeline.running && state.pipeline.runId === runId;
+    }
+
+    async function applyExpansionPass(settings, input, expanded, pass, requiredTables, streamExpanded, recovery = false) {
+      const beforeLength = visibleTextLength(expanded.html);
+      const additionRaw = await callExpansionChunk(
+        settings,
+        buildClaudeExpansionChunkPrompt(input,state.pipeline.transcript,state.pipeline.analysis,expanded,beforeLength,pass,requiredTables,recovery),
+        (detail) => setPipelineStage(4,"running",(recovery ? "품질 복구 " : "확장 ") + pass + " · " + detail),
+        streamExpanded
+      );
+      const additionHtml = parseClaudeAppendHtml(additionRaw);
+      expanded.html = appendExpansionHtml(expanded.html,additionHtml);
+      const finalLength = visibleTextLength(expanded.html);
+      const tableCount = (expanded.html.match(/<table[\s>]/gi) || []).length;
+      if (finalLength <= beforeLength + 80) {
+        throw new Error("Claude 확장 조각이 기존 글과 중복되어 분량이 늘지 않았습니다. 4단계를 다시 실행해 주세요.");
+      }
+      return {finalLength,tableCount};
+    }
 
     function pipelinePostSource(post) {
       if (!post) return "아직 결과가 없습니다.";
@@ -1604,11 +1630,13 @@
     };
 
     function buildClaudeDraftPrompt(input, transcript, analysis) {
-      const draftTarget = Math.max(2600,Math.min(4200,Math.round(input.targetChars * 0.38)));
+      const draftTarget = Math.max(2200,Math.min(3600,Math.round(input.targetChars * 0.4)));
       return [
         "당신은 20년 경력의 QA PLUS 식품안전 편집장입니다. Gemini 대본과 ChatGPT 분석만 근거로 1차 기본 글을 작성하세요.",
+        QUALITY_DENSITY_RULE,
         "이 호출은 1차 기본 글입니다. 최종 목표 " + input.targetChars.toLocaleString("ko-KR") + "자 중 약 " + draftTarget.toLocaleString("ko-KR") + "자 분량의 단단한 뼈대와 설명을 만드세요.",
         "짧은 요약문으로 끝내지 말고 서론, 핵심 개념, 중요성, 현장 적용 순서, 실무 예시, 흔한 실수, 체크리스트, 정리까지 모든 섹션의 기본 내용을 작성하세요.",
+        "같은 말을 바꿔 쓰지 말고, 각 문장은 현장 판단·기록·조치 중 하나에 직접 연결하세요.",
         "사실 확인이 필요한 항목은 단정하지 말고 확인 필요로 표시하세요. 임의 링크·법령 번호·수치·회사명은 만들지 마세요.",
         "주제: " + input.topic + " / 분야: " + input.category,
         "공식 출처: " + (input.sources.join("\n") || "제공되지 않음"),
@@ -1622,19 +1650,25 @@
       ].join("\n\n");
     };
 
-    function buildClaudeExpansionChunkPrompt(input, transcript, analysis, current, currentLength, pass, requiredTables) {
+    function buildClaudeExpansionChunkPrompt(input, transcript, analysis, current, currentLength, pass, requiredTables, recovery = false) {
       const minimum = Math.ceil(input.targetChars * TARGET_LENGTH_RATIO);
       const remaining = Math.max(0,minimum - currentLength);
-      const chunkTarget = Math.min(4200,Math.max(2200,remaining + 500));
+      const chunkFloor = input.targetChars <= 6000 ? 1400 : 2200;
+      const chunkCeil = input.targetChars <= 6000 ? 2800 : 4200;
+      const chunkTarget = Math.min(chunkCeil,Math.max(chunkFloor,remaining + (recovery ? 200 : 400)));
       const currentTables = (String(current.html || "").match(/<table[\s>]/gi) || []).length;
       const missingTables = Math.max(0,requiredTables - currentTables);
-      const focus = [
-        "판단 기준과 단계별 현장 적용을 깊게 설명하고, 서로 다른 실무 사례 3개 이상과 기록 시 주의점을 새 섹션으로 추가하세요.",
-        "흔한 실수 7개 이상, 현장 체크리스트 10개 이상, FAQ 5문항 이상을 구체적인 새 섹션으로 추가하세요.",
-        "현재 글에서 설명이 얕은 부분을 찾아 원인·판단 과정·실행 방법·후속 확인을 보강하고 실행 중심 결론을 추가하세요."
-      ][Math.min(2,Math.max(0,pass - 1))];
+      const focus = recovery
+        ? "분량을 늘리기 위한 반복 없이, 현재 글에서 실제로 비어 있는 판단 기준·현장 적용·기록 주의점·FAQ만 밀도 높게 보강하세요."
+        : [
+          "판단 기준과 단계별 현장 적용을 깊게 설명하고, 서로 다른 실무 사례 3개 이상과 기록 시 주의점을 새 섹션으로 추가하세요.",
+          "흔한 실수 7개 이상, 현장 체크리스트 10개 이상, FAQ 5문항 이상을 구체적인 새 섹션으로 추가하세요.",
+          "현재 글에서 설명이 얕은 부분을 찾아 원인·판단 과정·실행 방법·후속 확인을 보강하고 실행 중심 결론을 추가하세요."
+        ][Math.min(2,Math.max(0,pass - 1))];
       return [
         "당신은 QA PLUS의 최종 장문 편집장입니다. 아래 현재 글을 처음부터 다시 쓰지 말고, 뒤에 붙일 새로운 Blogger HTML 조각만 작성하세요.",
+        QUALITY_DENSITY_RULE,
+        recovery ? "이번 조각은 품질 복구 패스입니다. 목표 길이에 못 미친 핵심 공백만 채우고 군더더기는 넣지 마세요." : "이번 조각은 정규 확장 패스입니다.",
         "현재 본문은 " + currentLength.toLocaleString("ko-KR") + "자입니다. 최종 최소 " + minimum.toLocaleString("ko-KR") + "자 달성을 위해 이번 조각은 HTML 태그 제외 약 " + chunkTarget.toLocaleString("ko-KR") + "자로 작성하세요.",
         "현재 글의 문장·목차·사례를 반복하지 말고 빠진 설명만 추가하세요. 새 조각에는 h2부터 시작하는 완결된 섹션만 넣으세요.",
         focus,
@@ -1741,7 +1775,7 @@
         topic,
         transcript,
         category:els.category.value,
-        targetChars:Number(els.targetLength.value) || 9000,
+        targetChars:Number(els.targetLength.value) || DEFAULT_TARGET_CHARS,
         videoUrl:videoValue,
         videoId:getVideoId(videoValue),
         sources:normalizeSources(els.sources.value)
@@ -2177,6 +2211,8 @@ ${input.transcript}
       if (startStep > 2 && !state.pipeline.analysis) startStep = 2;
       if (startStep > 3 && !state.pipeline.draft) startStep = 3;
       if (startStep > 4 && !state.pipeline.expanded) startStep = 4;
+      const runId = (state.pipeline.runId || 0) + 1;
+      state.pipeline.runId = runId;
       state.pipeline.running = true;
       state.pipeline.failedStep = 0;
       state.pipeline.stageErrors = state.pipeline.stageErrors || {};
@@ -2192,6 +2228,7 @@ ${input.transcript}
           setBusy(true,"1/5 Gemini 대본 추출 중...");
           setPipelineStage(1,"running","영상 분석 중");
           state.pipeline.transcript = await extractTranscriptWithGemini(input,settings);
+          if (!isPipelineRunActive(runId)) return;
           updatePipelineOutputs();
           setPipelineStage(1,"done",state.pipeline.warning ? "보조 대본 사용" : (input.videoUrl ? "추출 완료" : "직접 대본"));
         }
@@ -2205,6 +2242,7 @@ ${input.transcript}
             {role:"system",content:"You are the QA PLUS content analyst. Return valid JSON only."},
             {role:"user",content:buildAnalysisPrompt(input,state.pipeline.transcript)}
           ],7000);
+          if (!isPipelineRunActive(runId)) return;
           state.pipeline.analysis = parseLooseJson(analysisRaw,"ChatGPT 분석");
           updatePipelineOutputs();
           setPipelineStage(2,"done","분석 완료");
@@ -2220,9 +2258,17 @@ ${input.transcript}
             settings,
             buildClaudeDraftPrompt(input,state.pipeline.transcript,state.pipeline.analysis),
             8000,
-            (detail) => setPipelineStage(3,"running",detail),
-            (chunk) => { state.pipeline.stageStreams[3] = chunk; updatePipelineOutputs(); }
+            (detail) => {
+              if (!isPipelineRunActive(runId)) return;
+              setPipelineStage(3,"running",detail);
+            },
+            (chunk) => {
+              if (!isPipelineRunActive(runId)) return;
+              state.pipeline.stageStreams[3] = chunk;
+              updatePipelineOutputs();
+            }
           );
+          if (!isPipelineRunActive(runId)) return;
           state.pipeline.draft = parseAiJson(draftRaw);
           delete state.pipeline.stageStreams[3];
           const draftLength = visibleTextLength(state.pipeline.draft.html);
@@ -2236,7 +2282,11 @@ ${input.transcript}
           delete state.pipeline.stageStreams[4];
           updatePipelineOutputs();
           const minimumLength = Math.ceil(input.targetChars * TARGET_LENGTH_RATIO);
-          const streamExpanded = (chunk) => { state.pipeline.stageStreams[4] = chunk; updatePipelineOutputs(); };
+          const streamExpanded = (chunk) => {
+            if (!isPipelineRunActive(runId)) return;
+            state.pipeline.stageStreams[4] = chunk;
+            updatePipelineOutputs();
+          };
           setBusy(true,"4/5 Claude 2차 살붙이기 중...");
           setPipelineStage(4,"running","Opus 직접 스트리밍 확장 중");
           let expanded = {
@@ -2253,18 +2303,23 @@ ${input.transcript}
             state.pipeline.stageStreams[4] = "";
             setBusy(true,"4/5 Claude 분할 살붙이기 " + pass + "/" + EXPANSION_MAX_PASSES + "...");
             setPipelineStage(4,"running",finalLength.toLocaleString("ko-KR") + "자 · 확장 조각 " + pass + "/" + EXPANSION_MAX_PASSES + " 작성 중");
-            const additionRaw = await callExpansionChunk(
-              settings,
-              buildClaudeExpansionChunkPrompt(input,state.pipeline.transcript,state.pipeline.analysis,expanded,finalLength,pass,requiredTables),
-              (detail) => setPipelineStage(4,"running","확장 " + pass + "/" + EXPANSION_MAX_PASSES + " · " + detail),
-              streamExpanded
-            );
-            const additionHtml = parseClaudeAppendHtml(additionRaw);
-            const beforeLength = finalLength;
-            expanded.html = appendExpansionHtml(expanded.html,additionHtml);
-            finalLength = visibleTextLength(expanded.html);
-            tableCount = (expanded.html.match(/<table[\s>]/gi) || []).length;
-            if (finalLength <= beforeLength + 100) throw new Error("Claude 확장 조각이 기존 글과 중복되어 분량이 늘지 않았습니다. 4단계를 다시 실행해 주세요.");
+            const passResult = await applyExpansionPass(settings,input,expanded,pass,requiredTables,streamExpanded,false);
+            if (!isPipelineRunActive(runId)) return;
+            finalLength = passResult.finalLength;
+            tableCount = passResult.tableCount;
+            updatePipelineOutputs();
+          }
+          for (let recoveryPass=1; recoveryPass<=EXPANSION_RECOVERY_PASSES && (finalLength < minimumLength || tableCount < requiredTables); recoveryPass += 1) {
+            state.pipeline.stageStreams[4] = "";
+            setBusy(true,"4/5 품질 복구 패스 " + recoveryPass + "/" + EXPANSION_RECOVERY_PASSES + "...");
+            setPipelineStage(4,"running","품질 복구 · 공백 보강 중");
+            const passResult = await applyExpansionPass(settings,input,expanded,EXPANSION_MAX_PASSES + recoveryPass,requiredTables,streamExpanded,true);
+            if (!isPipelineRunActive(runId)) return;
+            finalLength = passResult.finalLength;
+            tableCount = passResult.tableCount;
+            if (!String(state.pipeline.warning || "").includes("품질 복구 패스")) {
+              state.pipeline.warning = [state.pipeline.warning,"4단계에서 품질 복구 패스로 핵심 공백을 보강했습니다."].filter(Boolean).join(" ");
+            }
             updatePipelineOutputs();
           }
           delete state.pipeline.stageStreams[4];
@@ -2283,6 +2338,7 @@ ${input.transcript}
           setBusy(true,"5/5 OpenAI 이미지 생성 중...");
           setPipelineStage(5,"running",settings.imageModel + " 생성 중");
           await generateBrollImages({fromPipeline:true,propagate:true});
+          if (!isPipelineRunActive(runId)) return;
           setPipelineStage(5,"done",state.pipeline.images.length + "장 삽입");
           setStep(5);
         }
@@ -2290,6 +2346,7 @@ ${input.transcript}
         setBadge(els.pipelineOverall,state.pipeline.warning ? "5단계 완료·주의" : "5단계 완료",state.pipeline.warning ? "warn" : "ok");
         showNotice(state.pipeline.warning ? "5단계 자동화를 완료했습니다. " + state.pipeline.warning : "Gemini→ChatGPT→Claude→Claude 확장→OpenAI 이미지 5단계를 완료했습니다.",state.pipeline.warning ? "info" : "success");
       } catch (error) {
+        if (!isPipelineRunActive(runId) && state.pipeline.runId !== runId) return;
         console.error("Five-stage pipeline failed",error);
         state.pipeline.failedStep = activeStep;
         const errorMessage = activeStep === 5 ? normalizeImageServiceError(error?.message || error) : String(error?.message || error);
@@ -2312,8 +2369,10 @@ ${input.transcript}
           showNotice(activeStep + "단계에서 중단됐습니다: " + errorMessage,"error");
         }
       } finally {
-        state.pipeline.running = false;
-        setBusy(false);
+        if (state.pipeline.runId === runId) {
+          state.pipeline.running = false;
+          setBusy(false);
+        }
       }
     };
 
@@ -3131,7 +3190,7 @@ ${input.transcript}
       [els.videoUrl,els.topic,els.transcript,els.sources].forEach((element) => element.value = "");
       els.charCount.textContent = "0자";
       setBadge(els.videoBadge,"입력 대기");
-      state.pipeline = {transcript:"",analysis:null,draft:null,expanded:null,images:[],stageErrors:{},stageStreams:{},failedStep:0,running:false,inputFingerprint:"",warning:""};
+      state.pipeline = {transcript:"",analysis:null,draft:null,expanded:null,images:[],stageErrors:{},stageStreams:{},failedStep:0,running:false,runId:state.pipeline.runId || 0,inputFingerprint:"",warning:""};
       els.pipelinePanel.hidden = true;
       els.retryPipeline.hidden = true;
       showNotice("입력 내용과 파이프라인 중간 결과를 지웠습니다.","info");
