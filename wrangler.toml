@@ -2,3 +2,7 @@ name = "qa-plus-api"
 main = "qa-plus-api-worker.js"
 compatibility_date = "2026-07-29"
 workers_dev = true
+
+[[r2_buckets]]
+binding = "BLOG_IMAGES"
+bucket_name = "qa-plus-blog-images"

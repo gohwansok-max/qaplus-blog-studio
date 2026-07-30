@@ -50,8 +50,14 @@ assert.match(appScript, /requiredTables = input\.targetChars >= 9000 \? 2 : 1/);
 assert.match(appScript, /insertAdjacentHTML\("beforebegin",additionHtml\)/);
 assert.match(appScript, /DISCLAIMER_TEXT_RE/);
 assert.match(html, /option value="6000" selected/);
-assert.match(swSource, /const CACHE_NAME = "qaplus-blog-studio-v17"/);
-assert.doesNotMatch(swSource, /qaplus-blog-studio-v16/);
+assert.match(swSource, /const CACHE_NAME = "qaplus-blog-studio-v18"/);
+assert.doesNotMatch(swSource, /qaplus-blog-studio-v17/);
+assert.match(appScript, /image\.persistent_url \|\| image\.proxy_url/);
+assert.match(appScript, /durableUrl\.pathname\.startsWith\("\/blog-images\/"\)/);
+assert.doesNotMatch(
+  extractFunction(appScript,"requestBrollImage"),
+  /return "data:image\/jpeg;base64/
+);
 
 const emptyFallbackBlock = appScript.slice(
   appScript.indexOf("if (!result.content)"),
