@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0b1f33">
+  <meta name="robots" content="noindex">
+  <title>QA PLUS Blog Studio 업데이트</title>
+  <style>
+    *{box-sizing:border-box}
+    body{display:grid;min-height:100vh;margin:0;place-items:center;padding:24px;background:#f4f8f8;color:#142b3b;font-family:"Malgun Gothic",sans-serif}
+    main{width:min(440px,100%);border:1px solid #d9e5e7;border-radius:22px;padding:30px;background:#fff;box-shadow:0 18px 48px rgba(11,31,51,.1);text-align:center}
+    .mark{display:grid;width:58px;height:58px;margin:0 auto 18px;place-items:center;border-radius:17px;background:linear-gradient(145deg,#087f78,#0b1f33);color:#fff;font-size:1.3rem;font-weight:900}
+    h1{margin:0;color:#0b1f33;font-size:1.35rem}
+    p{margin:12px 0 0;color:#5c6f7a;line-height:1.65}
+    .version{display:inline-flex;margin-top:18px;border:1px solid #a8ded5;border-radius:999px;padding:5px 11px;background:#e7f7f2;color:#087f78;font-size:.78rem;font-weight:900}
+    a{display:none;margin-top:18px;color:#087f78;font-weight:800}
+  </style>
+</head>
+<body>
+  <main>
+    <div class="mark">QA+</div>
+    <h1>최신 버전으로 업데이트 중입니다</h1>
+    <p id="status">이전 앱 캐시를 안전하게 정리하고 있습니다.</p>
+    <span id="version" class="version">APP v20</span>
+    <a id="retry" href="./?appRefresh=retry">스튜디오 다시 열기</a>
+  </main>
+  <script>
+    "use strict";
+
+    const FALLBACK_VERSION = "20";
+    const params = new URL(window.location.href).searchParams;
+    const requestedVersion = params.get("version");
+    const appVersion = /^\d+$/.test(requestedVersion || "") ? requestedVersion : FALLBACK_VERSION;
+    document.getElementById("version").textContent = `APP v${appVersion}`;
+
+    async function resetApp() {
+      const appScope = new URL("./",window.location.href).href;
+      if ("serviceWorker" in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(
+          registrations
+            .filter((registration) => registration.scope === appScope)
+            .map((registration) => registration.unregister())
+        );
+      }
+      if ("caches" in window) {
+        const cacheKeys = await caches.keys();
+        await Promise.all(
+          cacheKeys
+            .filter((key) => key.startsWith("qaplus-blog-studio-"))
+            .map((key) => caches.delete(key))
+        );
+      }
+      const target = new URL("./",window.location.href);
+      target.searchParams.set("appVersion",appVersion);
+      target.searchParams.set("appRefresh",Date.now().toString());
+      window.location.replace(target.toString());
+    }
+
+    resetApp().catch(() => {
+      document.getElementById("status").textContent = "자동 업데이트가 완료되지 않았습니다. 아래 버튼으로 다시 열어 주세요.";
+      document.getElementById("retry").style.display = "inline-block";
+    });
+  </script>
+</body>
+</html>

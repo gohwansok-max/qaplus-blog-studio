@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE_NAME = "qaplus-blog-studio-v19";
+const CACHE_NAME = "qaplus-blog-studio-v20";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -15,7 +15,7 @@ const APP_SHELL = [
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(APP_SHELL))
+      .then((cache) => cache.addAll(APP_SHELL.map((path) => new Request(new URL(path, self.location.href), { cache: "reload" }))))
       .then(() => self.skipWaiting())
   );
 });
@@ -36,12 +36,16 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
 
   if (request.mode === "navigate") {
+    const networkRequest = new Request(request, { cache: "no-store" });
     event.respondWith(
-      fetch(request)
+      fetch(networkRequest)
         .then((response) => {
+          if (!response.ok) throw new Error(`Navigation failed: ${response.status}`);
+          if (url.pathname.endsWith("/reset.html")) return response;
           const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put("./index.html", copy));
-          return response;
+          return caches.open(CACHE_NAME)
+            .then((cache) => cache.put("./index.html", copy))
+            .then(() => response);
         })
         .catch(() => caches.match("./index.html"))
     );

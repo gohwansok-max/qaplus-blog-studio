@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#0b1f33">
   <meta name="application-name" content="QA PLUS Blog Studio">
+  <meta name="qa-plus-app-version" content="20">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="QA+ Studio">
@@ -54,6 +55,7 @@
     .brand-copy{display:grid;line-height:1.15}
     .brand-copy strong{color:var(--navy);font-size:1.08rem}
     .brand-copy span{margin-top:4px;color:var(--muted);font-size:.66rem;font-weight:800;letter-spacing:.08em}
+    .app-version{display:inline-flex;min-height:24px;align-items:center;justify-content:center;border:1px solid #a8ded5;border-radius:999px;padding:3px 8px;background:var(--mint-soft);color:var(--teal);font-size:.67rem;font-weight:900;letter-spacing:.03em;white-space:nowrap}
     .top-links{display:flex;margin-left:auto;align-items:center;gap:8px}
     .top-links a{padding:9px 12px;border-radius:10px;color:#3b4c58;font-size:.86rem;font-weight:800}
     .top-links a:hover{background:var(--mint-soft);color:var(--teal)}
@@ -297,6 +299,7 @@
         <span class="brand-mark">QA+</span>
         <span class="brand-copy"><strong>QA PLUS Blog Studio</strong><span>FOOD SAFETY CONTENT AUTOMATION</span></span>
       </a>
+      <span id="appVersion" class="app-version" aria-label="현재 앱 버전">APP v20</span>
       <div class="studio-nav" role="tablist" aria-label="앱 화면">
         <button class="studio-tab active" type="button" data-app-view="automation" role="tab" aria-selected="true">글 자동화</button>
         <button class="studio-tab" type="button" data-app-view="settings" role="tab" aria-selected="false">설정·검증</button>
@@ -744,6 +747,7 @@
   <script>
     "use strict";
 
+    const APP_VERSION = "20";
     const BLOG_URL = "https://qaplus-haccp.blogspot.com/";
     const YOUTUBE_CHANNEL = "https://youtube.com/@qaplus_haccp?si=2eoN3yuYCoDBpLru";
     const YOUTUBE_HANDLE = "@qaplus_haccp";
@@ -856,7 +860,7 @@
       verifyYoutubeStatus:$("verifyYoutubeStatus"), verifyLinksStatus:$("verifyLinksStatus"),
       aiActionFeedback:$("aiActionFeedback"), googleActionFeedback:$("googleActionFeedback"),
       verificationMessage:$("verificationMessage"), verificationBar:$("verificationBar"),
-      verificationStep:$("verificationStep"), verifyAllConnections:$("verifyAllConnections"), pwaInstall:$("pwaInstall"), pwaRefresh:$("pwaRefresh"),
+      verificationStep:$("verificationStep"), verifyAllConnections:$("verifyAllConnections"), pwaInstall:$("pwaInstall"), pwaRefresh:$("pwaRefresh"), appVersion:$("appVersion"),
       pipelinePanel:$("pipelinePanel"), pipelineOverall:$("pipelineOverall"),
       pipelineTranscript:$("pipelineTranscript"), pipelineTranscriptMeta:$("pipelineTranscriptMeta"),
       pipelineAnalysis:$("pipelineAnalysis"), pipelineAnalysisMeta:$("pipelineAnalysisMeta"),
@@ -870,23 +874,19 @@
       button.disabled = true;
       button.classList.add("refreshing");
       button.innerHTML = '<span class="refresh-icon" aria-hidden="true">↻</span><span class="refresh-label">업데이트 중</span>';
-      if ("serviceWorker" in navigator) {
-        try {
-          const registration = await navigator.serviceWorker.getRegistration();
-          if (registration) await registration.update();
-        } catch (_) {}
-      }
-      await delay(350);
-      const refreshedUrl = new URL(window.location.href);
-      refreshedUrl.searchParams.set("appRefresh",Date.now().toString());
-      window.location.replace(refreshedUrl.toString());
+      await delay(150);
+      const resetUrl = new URL("./reset.html",window.location.href);
+      resetUrl.searchParams.set("version",APP_VERSION);
+      resetUrl.searchParams.set("appRefresh",Date.now().toString());
+      window.location.replace(resetUrl.toString());
     }
 
     function setupPwa() {
+      els.appVersion.textContent = `APP v${APP_VERSION}`;
       els.pwaRefresh.addEventListener("click",refreshPwaApp);
       if ("serviceWorker" in navigator) {
         window.addEventListener("load",() => {
-          navigator.serviceWorker.register("./sw.js",{scope:"./"})
+          navigator.serviceWorker.register(`./sw.js?v=${APP_VERSION}`,{scope:"./",updateViaCache:"none"})
             .catch((error) => console.warn("PWA service worker registration failed",error));
         });
       }
