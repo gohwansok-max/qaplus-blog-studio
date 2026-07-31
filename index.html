@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#0b1f33">
   <meta name="application-name" content="QA PLUS Blog Studio">
-  <meta name="qa-plus-app-version" content="21">
+  <meta name="qa-plus-app-version" content="22">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="QA+ Studio">
@@ -267,7 +267,7 @@
         <span class="brand-mark">QA+</span>
         <span class="brand-copy"><strong>QA PLUS Blog Studio</strong><span>FOOD SAFETY CONTENT AUTOMATION</span></span>
       </a>
-      <span id="appVersion" class="app-version" aria-label="현재 앱 버전">APP v21</span>
+      <span id="appVersion" class="app-version" aria-label="현재 앱 버전">APP v22</span>
       <div class="studio-nav" role="tablist" aria-label="앱 화면">
         <button class="studio-tab active" type="button" data-app-view="make" role="tab" aria-selected="true">글 만들기</button>
         <button class="studio-tab" type="button" data-app-view="tools" role="tab" aria-selected="false">블로그 도구</button>
@@ -407,7 +407,7 @@
                 <div class="rstep" id="st2" data-s="idle"><div class="rdot">2</div>
                   <h3>취재하고 설계하기</h3><p><span id="m1lab">gpt-5.6-sol</span> 이 목차와 근거·표 계획을 짭니다</p><div class="stat">대기</div></div>
                 <div class="rstep" id="st3" data-s="idle"><div class="rdot">3</div>
-                  <h3>본문 집필</h3><p><span id="m2lab">claude-opus-4-8</span> 이 길고 깊게 씁니다</p><div class="stat">대기</div></div>
+                  <h3>본문 집필</h3><p><span id="m2lab">claude-opus-5</span> 가 길고 깊게 씁니다</p><div class="stat">대기</div></div>
                 <div class="rstep" id="st4" data-s="idle"><div class="rdot">4</div>
                   <h3>보강하고 살 붙이기</h3><p>사례·표·체크리스트·FAQ를 채웁니다</p><div class="stat">대기</div></div>
                 <div class="rstep" id="st5" data-s="idle"><div class="rdot">5</div>
@@ -624,11 +624,12 @@
               <div class="field">
                 <label for="m2">3·4단계 모델 — 집필·보강 <span class="saved" id="sv-m2">저장됨</span></label>
                 <select id="m2">
-                  <option value="claude-opus-4-8">claude-opus-4-8 (권장 · 경제냠냠 동일)</option>
-                  <option value="claude-opus-5">claude-opus-5</option>
+                  <option value="claude-opus-5">claude-opus-5 (권장)</option>
+                  <option value="claude-opus-4-8">claude-opus-4-8</option>
                   <option value="claude-fable-5">claude-fable-5 (최고급 · 비쌈)</option>
                   <option value="claude-sonnet-5">claude-sonnet-5 (저렴)</option>
                 </select>
+                <p class="hint">공급자 장애로 이 모델이 막히면(<code>fixed_merchant_unavailable</code>) 같은 계열의 다음 모델로 자동 전환하고 결과 화면에 알려 드립니다.</p>
               </div>
               <p class="security-note">키는 소스 코드나 주소에 넣지 않고 이 기기의 브라우저 저장소에만 보관합니다. 공용 PC에서는 입력하지 마세요.</p>
             </div>
@@ -863,7 +864,7 @@
    글쓰기: 칩섭(OpenAI 호환 chat/completions, 스트리밍)
    대본: 제미나이  ·  이미지: 칩섭/OpenAI  ·  보관: 워커 KV 또는 GitHub
    ========================================================== */
-    const APP_VERSION = "21";
+    const APP_VERSION = "22";
     const BLOG_URL = "https://qaplus-haccp.blogspot.com/";
     const YOUTUBE_CHANNEL = "https://youtube.com/@qaplus_haccp?si=2eoN3yuYCoDBpLru";
     const YOUTUBE_HANDLE = "@qaplus_haccp";
@@ -901,7 +902,7 @@
       proxy: DEFAULT_PROXY,
       base: "https://api.cheapsub.im/v1",
       m1: "gpt-5.6-sol",
-      m2: "claude-opus-4-8",
+      m2: "claude-opus-5",
       gmModel: "gemini-3.6-flash",
       imgRoute: "auto",
       imgStyle: "photo",
@@ -1142,12 +1143,42 @@
       return a + b;
     }
 
+    /* ---------- 모델 자동 전환 ----------
+       칩섭은 특정 공급자가 죽으면 그 모델만 503 fixed_merchant_unavailable 로 막고
+       "다른 모델을 이용해 주세요" 라고 안내합니다(요금은 청구되지 않습니다).
+       같은 모델을 다시 불러 봐야 소용없으므로 같은 계열의 다음 모델로 넘깁니다. */
+    const MODEL_FAMILIES = {
+      gpt: ["gpt-5.6-sol","gpt-5.6-terra","gpt-5.6-luna","deepseek-v4-pro","glm-5.2","grok-4.5"],
+      claude: ["claude-opus-5","claude-opus-4-8","claude-sonnet-5","claude-fable-5"]
+    };
+    const modelSwap = {};        // 원래 모델 -> 이번 세션에서 실제로 되는 모델
+    const usedModels = new Set();
+
+    function modelCandidates(preferred) {
+      const family = /^claude-/i.test(preferred) ? MODEL_FAMILIES.claude : MODEL_FAMILIES.gpt;
+      const healthy = modelSwap[preferred];
+      const head = healthy && healthy !== preferred ? [healthy, preferred] : [preferred];
+      return [...new Set([...head, ...family])];
+    }
+    function modelUnavailable(e) {
+      return /fixed_merchant_unavailable|model_not_found|model_not_allowed|no_such_model|이용할 수 없습니다|호출 실패 404/i.test(e?.message || "");
+    }
+    function noteModel(preferred, used) {
+      usedModels.add(used);
+      if (used === preferred || modelSwap[preferred] === used) return;   // 이미 알린 전환은 다시 알리지 않습니다
+      modelSwap[preferred] = used;
+      logErr(preferred + " 공급자가 잠시 중단되어 " + used + " 로 자동 전환했습니다. 요금은 청구되지 않습니다.");
+      toast(preferred + " → " + used + " 자동 전환", 4200);
+    }
+
     /* 한 번에 다 못 쓰거나 모바일 연결이 끊기면 이어서 쓰는 래퍼 */
     const CONT = "위 원고가 중간에서 끊겼습니다. 마지막 글자 바로 다음부터 이어서 계속 써 주세요. 인사말·설명·코드펜스 없이 곧바로 HTML만 이어서 출력하고, 이미 쓴 부분은 절대 다시 쓰지 마세요.";
     const MORE = "분량이 아직 목표에 못 미칩니다. 지금까지 쓴 내용에 이어서, 아직 다루지 않은 소제목·표·사례·자주 묻는 질문을 더 써 주세요. 인사말이나 설명 없이 곧바로 HTML만 이어서 출력하고, 이미 쓴 내용은 반복하지 마세요.";
 
     async function callLong({model, system, user, maxTokens = 16000, target = 0, rounds = 6, initial = "", onDelta, onRound, onCheckpoint}) {
       const head = [{role:"system", content:system}, {role:"user", content:user}];
+      const candidates = modelCandidates(model);
+      let ci = 0;
       let full = initial || "";
       let lastFinish = full ? "interrupted" : "";
       let calls = 0, retries = 0;
@@ -1159,8 +1190,13 @@
              {role:"user", content:((lastFinish === "length" || lastFinish === "interrupted") ? CONT : MORE)}];
         let got;
         try {
-          got = await callRaw({model, messages:msgs, maxTokens, onDelta:(t) => onDelta && onDelta(joinContinuation(full, t))});
+          got = await callRaw({model:candidates[ci], messages:msgs, maxTokens, onDelta:(t) => onDelta && onDelta(joinContinuation(full, t))});
         } catch (e) {
+          if (modelUnavailable(e) && ci < candidates.length - 1) {
+            ci += 1;
+            if (onRound) onRound(calls, textLen(full), "retry", candidates[ci] + " 로 전환 중…");
+            continue;
+          }
           if (transientLLMError(e) && retries < 6) {
             await waitForApp(retries, (m) => onRound && onRound(calls + 1, textLen(full), "retry", m));
             retries += 1;
@@ -1170,6 +1206,7 @@
         }
         calls += 1;
         retries = 0;
+        noteModel(model, candidates[ci]);
         full = joinContinuation(full, got.text);
         lastFinish = got.finish;
         if (onCheckpoint) onCheckpoint(full, got.finish);
@@ -1188,17 +1225,21 @@
 
     /* 짧은 호출도 백그라운드 연결 단절 시 자동 재시도 */
     async function callLLM({model, system, user, maxTokens = 4096, onDelta}) {
+      const messages = [{role:"system", content:system}, {role:"user", content:user}];
       let last;
-      for (let i = 0; i < 4; i += 1) {
-        try {
-          const got = await callRaw({model, messages:[{role:"system", content:system}, {role:"user", content:user}], maxTokens, onDelta});
-          if (got.finish !== "interrupted") return got.text;
-          last = new Error("응답 스트림이 중간에 끊겼습니다.");
-        } catch (e) {
-          last = e;
-          if (!transientLLMError(e)) throw e;
+      for (const candidate of modelCandidates(model)) {
+        for (let i = 0; i < 4; i += 1) {
+          try {
+            const got = await callRaw({model:candidate, messages, maxTokens, onDelta});
+            if (got.finish !== "interrupted") { noteModel(model, candidate); return got.text; }
+            last = new Error("응답 스트림이 중간에 끊겼습니다.");
+          } catch (e) {
+            last = e;
+            if (modelUnavailable(e)) break;          // 이 모델은 공급자가 막혀 있음 → 다음 모델
+            if (!transientLLMError(e)) throw e;
+          }
+          if (i < 3) await waitForApp(i);
         }
-        if (i < 3) await waitForApp(i);
       }
       throw last || new Error("응답을 받지 못했습니다.");
     }
@@ -1847,7 +1888,7 @@ ${IMG_NEGATIVE}
       $("#tagBox").innerHTML = article.keywords.map((t) => '<span class="tag">#' + esc(t) + "</span>").join("");
       $("#charCount").textContent = textLen(article.html).toLocaleString("ko-KR") + "자";
       $("#imgCountOut").textContent = "이미지 " + article.images.length + "장";
-      $("#usedModels").textContent = cfg.m1 + " + " + cfg.m2;
+      $("#usedModels").textContent = usedModels.size ? [...usedModels].join(" + ") : cfg.m1 + " + " + cfg.m2;
       $("#seoVideo").textContent = input.videoId ? "YouTube " + input.videoId : "연결된 영상 없음";
       $("#postLength").textContent = textLen(article.html).toLocaleString("ko-KR") + "자 / 목표 " + input.targetChars.toLocaleString("ko-KR") + "자";
       $("#artDesc").textContent = article.desc || "발행 전에 제목, 검색 설명, 본문과 링크를 반드시 확인하세요.";
@@ -2396,7 +2437,15 @@ ${IMG_NEGATIVE}
       try {
         await callLLM({model:cfg.m1, system:"짧게 답하세요.", user:'"확인" 두 글자만 답하세요.', maxTokens:200});
         await callLLM({model:cfg.m2, system:"짧게 답하세요.", user:'"확인" 두 글자만 답하세요.', maxTokens:200});
-        out("testOut", '<div class="note good"><b>' + esc(cfg.m1) + "</b> 정상 · <b>" + esc(cfg.m2) + "</b> 정상</div>");
+        const shown = (preferred) => {
+          const actual = modelSwap[preferred] || preferred;
+          return actual === preferred
+            ? "<b>" + esc(preferred) + "</b> 정상"
+            : "<b>" + esc(preferred) + "</b> 공급자 중단 → <b>" + esc(actual) + "</b> 로 자동 전환";
+        };
+        const swapped = modelSwap[cfg.m1] || modelSwap[cfg.m2];
+        out("testOut", '<div class="note ' + (swapped ? "" : "good") + '">' + shown(cfg.m1) + " · " + shown(cfg.m2)
+          + (swapped ? "<br>칩섭 공급자 장애는 요금이 청구되지 않습니다. 잠시 뒤 원래 모델로 다시 확인해 보세요." : "") + "</div>");
         setBadge($("#stCsk2"), "정상", "ok");
         setBadge($("#vCsk"), "정상", "ok");
         return true;

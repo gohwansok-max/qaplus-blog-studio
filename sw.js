@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE_NAME = "qaplus-blog-studio-v21";
+const CACHE_NAME = "qaplus-blog-studio-v22";
 const APP_SHELL = [
   "./",
   "./index.html",
