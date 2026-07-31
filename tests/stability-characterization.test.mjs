@@ -1,5 +1,5 @@
 /**
- * QA PLUS Blog Studio — 안정성 특성 테스트 (v23, 경제냠냠 파이프라인 이식판)
+ * QA PLUS Blog Studio — 안정성 특성 테스트 (v24, 경제냠냠 파이프라인 이식판)
  *
  * 이 파일은 "경제냠냠과 같은 파이프라인" 계약을 고정합니다.
  * 리팩터링으로 아래 성질이 사라지면 실패해야 합니다.
@@ -358,6 +358,20 @@ assert.match(html, /id="fixBlocks"/);
 
   // 영상이 없으면 임베드를 넣지 않습니다.
   assert.doesNotMatch(ctx.ensureRequiredBlocks("<h2>제목</h2><p>본문입니다.</p>", { videoId: "", topic: "x" }), /youtube-nocookie/);
+
+  // 이미 발행용 스타일이 입혀진 글(=<div> 래퍼 안)도 꼬리 정리가 되어야 합니다.
+  // '누락 항목 채우기' 버튼은 대부분 이 상태의 글에 쓰입니다.
+  const wrapped = '<div style="max-width:100%;overflow-wrap:break-word">'
+    + "<h2>제목</h2><p>현장에서 확인해야 하는 항목입니다.</p><p>선행요건</p></div>";
+  const wrappedFixed = ctx.ensureRequiredBlocks(wrapped, input);
+  assert.doesNotMatch(wrappedFixed, /<p>선행요건<\/p>/, "래퍼 안의 잘린 꼬리도 버려야 합니다");
+  assert.ok(wrappedFixed.includes("drive.google.com"));
+  assert.match(wrappedFixed, /일반 실무 참고용/);
+  // 덧붙인 내용이 래퍼 밖으로 새지 않아야 합니다.
+  assert.ok(
+    wrappedFixed.trim().endsWith("</div>"),
+    "CTA·면책 문구는 본문 래퍼 안에 들어가야 합니다"
+  );
 }
 
 /* ============================================================
@@ -396,14 +410,14 @@ assert.match(appScript, /findExistingBloggerPost/, "같은 영상 중복 발행 
 assert.match(appScript, /scope:"https:\/\/www\.googleapis\.com\/auth\/blogger"/);
 assert.doesNotMatch(appScript, /youtube\.force-ssl/);
 
-assert.match(html, /<meta name="qa-plus-app-version" content="23">/);
-assert.match(html, /id="appVersion"[^>]*>APP v23<\/span>/);
-assert.equal(extractConst(appScript, "APP_VERSION").replace(/"/g, ""), "23");
+assert.match(html, /<meta name="qa-plus-app-version" content="24">/);
+assert.match(html, /id="appVersion"[^>]*>APP v24<\/span>/);
+assert.equal(extractConst(appScript, "APP_VERSION").replace(/"/g, ""), "24");
 assert.match(appScript, /serviceWorker\.register\("\.\/sw\.js\?v=" \+ APP_VERSION, \{scope:"\.\/", updateViaCache:"none"\}\)/);
 assert.match(appScript, /new URL\("\.\/reset\.html", window\.location\.href\)/);
-assert.match(swSource, /const CACHE_NAME = "qaplus-blog-studio-v23"/);
-assert.doesNotMatch(swSource, /qaplus-blog-studio-v22/);
-assert.match(resetSource, /const FALLBACK_VERSION = "23"/);
+assert.match(swSource, /const CACHE_NAME = "qaplus-blog-studio-v24"/);
+assert.doesNotMatch(swSource, /qaplus-blog-studio-v23/);
+assert.match(resetSource, /const FALLBACK_VERSION = "24"/);
 assert.match(resetSource, /key\.startsWith\("qaplus-blog-studio-"\)/);
 
 // CSP 는 파이프라인이 실제로 부르는 호스트를 모두 허용해야 합니다.
