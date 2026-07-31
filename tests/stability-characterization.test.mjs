@@ -1,5 +1,5 @@
 /**
- * QA PLUS Blog Studio — 안정성 특성 테스트 (v21, 경제냠냠 파이프라인 이식판)
+ * QA PLUS Blog Studio — 안정성 특성 테스트 (v22, 경제냠냠 파이프라인 이식판)
  *
  * 이 파일은 "경제냠냠과 같은 파이프라인" 계약을 고정합니다.
  * 리팩터링으로 아래 성질이 사라지면 실패해야 합니다.
@@ -44,6 +44,78 @@ assert.doesNotMatch(appScript, /anthropic-version/);
 assert.doesNotMatch(appScript, /CLAUDE_SONNET_FALLBACK_MODEL/);
 assert.doesNotMatch(appScript, /CLAUDE_EMPTY_SAME_MODEL_RETRIES/);
 assert.doesNotMatch(appScript, /EXPANSION_MAX_PASSES/);
+
+/* ------------------------------------------------------------
+   1-b. 공급자 장애 시 모델 자동 전환
+   칩섭은 특정 공급자가 죽으면 그 모델만 503 fixed_merchant_unavailable 로 막고
+   "다른 모델을 이용해 주세요" 라고 안내합니다(요금 미청구). 같은 모델 재시도는
+   소용이 없으므로 같은 계열의 다음 모델로 넘어가야 합니다.
+   ------------------------------------------------------------ */
+
+assert.match(appScript, /const MODEL_FAMILIES = /);
+assert.match(appScript, /function modelUnavailable\(e\)/);
+assert.match(appScript, /fixed_merchant_unavailable/);
+assert.match(appScript, /function noteModel\(preferred, used\)/);
+assert.match(appScript, /요금은 청구되지 않습니다/, "요금 미청구 사실을 사용자에게 알려야 합니다");
+assert.match(
+  extractFunction(appScript, "noteModel"),
+  /modelSwap\[preferred\] === used\) return/,
+  "같은 전환을 매 호출마다 다시 알리면 결과 화면이 도배됩니다"
+);
+
+{
+  const ctx = runFunctions(["modelCandidates"], [
+    `MODEL_FAMILIES = ${/const MODEL_FAMILIES = \{[\s\S]*?\n    \};/.exec(appScript)[0].replace(/^const MODEL_FAMILIES = /, "").replace(/;$/, "")};`,
+    `modelSwap = {};`
+  ].join("\n"));
+
+  // 선호 모델이 맨 앞, 같은 계열만 뒤따릅니다.
+  const claude = [...ctx.modelCandidates("claude-opus-5")];
+  assert.equal(claude[0], "claude-opus-5");
+  assert.ok(claude.includes("claude-opus-4-8") && claude.includes("claude-sonnet-5"));
+  assert.ok(!claude.some((m) => m.startsWith("gpt-")), "Claude 는 GPT 계열로 넘어가지 않습니다");
+
+  const gpt = [...ctx.modelCandidates("gpt-5.6-sol")];
+  assert.equal(gpt[0], "gpt-5.6-sol");
+  assert.ok(gpt.includes("gpt-5.6-terra") && gpt.includes("deepseek-v4-pro") && gpt.includes("glm-5.2"));
+  assert.ok(!gpt.some((m) => m.startsWith("claude-")));
+
+  // 중복이 없어야 합니다.
+  assert.equal(new Set(gpt).size, gpt.length);
+}
+
+// callLLM 과 callLong 모두 모델 후보를 순회해야 합니다.
+{
+  const callLlm = extractFunction(appScript, "callLLM");
+  assert.match(callLlm, /modelCandidates\(model\)/);
+  assert.match(callLlm, /if \(modelUnavailable\(e\)\) break/, "공급자 차단이면 같은 모델 재시도 없이 다음 모델로");
+  assert.match(callLlm, /noteModel\(model, candidate\)/);
+
+  const callLongFn = extractFunction(appScript, "callLong");
+  assert.match(callLongFn, /const candidates = modelCandidates\(model\)/);
+  assert.match(callLongFn, /modelUnavailable\(e\) && ci < candidates\.length - 1/);
+  assert.match(callLongFn, /noteModel\(model, candidates\[ci\]\)/);
+}
+
+// 칩섭 공식 모델 목록에 없는 이름을 쓰면 안 됩니다.
+{
+  const CHEAPSUB_MODELS = new Set([
+    "gpt-5.6-sol","gpt-5.6-terra","gpt-5.6-luna","gpt-image-2",
+    "claude-opus-5","claude-opus-4-8","claude-sonnet-5","claude-fable-5",
+    "deepseek-v4-pro","grok-4.5","glm-5.2"
+  ]);
+  const families = /const MODEL_FAMILIES = \{[\s\S]*?\n    \};/.exec(appScript)[0];
+  for (const model of families.match(/"[a-z0-9.\-]+"/gi).map((s) => s.replace(/"/g, ""))) {
+    assert.ok(CHEAPSUB_MODELS.has(model), `${model} 은 칩섭이 제공하는 모델이 아닙니다`);
+  }
+  // 설정 드롭다운의 모델도 마찬가지입니다.
+  const selects = /<select id="m[12]">[\s\S]*?<\/select>/g;
+  for (const block of html.match(selects) || []) {
+    for (const value of block.match(/value="([^"]+)"/g).map((s) => s.slice(7, -1))) {
+      assert.ok(CHEAPSUB_MODELS.has(value), `${value} 은 칩섭이 제공하는 모델이 아닙니다`);
+    }
+  }
+}
 
 // 파라미터 이름이 안 맞는 공급자를 위한 3단 재시도 (경제냠냠과 동일)
 assert.match(appScript, /max_completion_tokens/);
@@ -121,7 +193,7 @@ assert.doesNotMatch(appScript, /sessionStorage/, "설정은 탭을 닫아도 남
 // 경제냠냠 기본값 그대로
 assert.equal(extractConst(appScript, "DEFAULT_PROXY").replace(/"/g, ""), "https://qa-plus-api.gohwansok.workers.dev");
 assert.match(appScript, /m1: "gpt-5\.6-sol"/);
-assert.match(appScript, /m2: "claude-opus-4-8"/);
+assert.match(appScript, /m2: "claude-opus-5"/);
 assert.match(appScript, /gmModel: "gemini-3\.6-flash"/);
 assert.match(appScript, /imgModel: "gpt-image-2"/);
 assert.match(appScript, /len: "9000"/);
@@ -271,14 +343,14 @@ assert.match(appScript, /findExistingBloggerPost/, "같은 영상 중복 발행 
 assert.match(appScript, /scope:"https:\/\/www\.googleapis\.com\/auth\/blogger"/);
 assert.doesNotMatch(appScript, /youtube\.force-ssl/);
 
-assert.match(html, /<meta name="qa-plus-app-version" content="21">/);
-assert.match(html, /id="appVersion"[^>]*>APP v21<\/span>/);
-assert.equal(extractConst(appScript, "APP_VERSION").replace(/"/g, ""), "21");
+assert.match(html, /<meta name="qa-plus-app-version" content="22">/);
+assert.match(html, /id="appVersion"[^>]*>APP v22<\/span>/);
+assert.equal(extractConst(appScript, "APP_VERSION").replace(/"/g, ""), "22");
 assert.match(appScript, /serviceWorker\.register\("\.\/sw\.js\?v=" \+ APP_VERSION, \{scope:"\.\/", updateViaCache:"none"\}\)/);
 assert.match(appScript, /new URL\("\.\/reset\.html", window\.location\.href\)/);
-assert.match(swSource, /const CACHE_NAME = "qaplus-blog-studio-v21"/);
-assert.doesNotMatch(swSource, /qaplus-blog-studio-v20/);
-assert.match(resetSource, /const FALLBACK_VERSION = "21"/);
+assert.match(swSource, /const CACHE_NAME = "qaplus-blog-studio-v22"/);
+assert.doesNotMatch(swSource, /qaplus-blog-studio-v21/);
+assert.match(resetSource, /const FALLBACK_VERSION = "22"/);
 assert.match(resetSource, /key\.startsWith\("qaplus-blog-studio-"\)/);
 
 // CSP 는 파이프라인이 실제로 부르는 호스트를 모두 허용해야 합니다.
