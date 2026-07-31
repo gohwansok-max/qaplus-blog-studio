@@ -132,7 +132,30 @@ class ShimElement extends ShimNode {
       nodes.forEach((node) => this.appendChild(node));
       return;
     }
+    if (position === "afterend") {
+      const parent = this.parentNode;
+      let anchor = this;
+      nodes.forEach((node) => {
+        const index = parent.childNodes.indexOf(anchor);
+        parent.insertBefore(node, parent.childNodes[index + 1] || null);
+        anchor = node;
+      });
+      return;
+    }
+    if (position === "afterbegin") {
+      nodes.reverse().forEach((node) => this.insertBefore(node, this.childNodes[0] || null));
+      return;
+    }
     throw new Error("unsupported insertAdjacentHTML position: " + position);
+  }
+
+  get children() {
+    return this.childNodes.filter((node) => node.nodeType === 1);
+  }
+
+  get lastElementChild() {
+    const elements = this.children;
+    return elements[elements.length - 1] || null;
   }
 
   get innerHTML() {

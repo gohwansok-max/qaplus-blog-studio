@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#0b1f33">
   <meta name="application-name" content="QA PLUS Blog Studio">
-  <meta name="qa-plus-app-version" content="22">
+  <meta name="qa-plus-app-version" content="23">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="QA+ Studio">
@@ -267,7 +267,7 @@
         <span class="brand-mark">QA+</span>
         <span class="brand-copy"><strong>QA PLUS Blog Studio</strong><span>FOOD SAFETY CONTENT AUTOMATION</span></span>
       </a>
-      <span id="appVersion" class="app-version" aria-label="현재 앱 버전">APP v22</span>
+      <span id="appVersion" class="app-version" aria-label="현재 앱 버전">APP v23</span>
       <div class="studio-nav" role="tablist" aria-label="앱 화면">
         <button class="studio-tab active" type="button" data-app-view="make" role="tab" aria-selected="true">글 만들기</button>
         <button class="studio-tab" type="button" data-app-view="tools" role="tab" aria-selected="false">블로그 도구</button>
@@ -470,6 +470,7 @@
               <div id="errLog"></div>
               <div class="toolbar">
                 <button id="applyHtml" class="btn btn-secondary btn-small" type="button">HTML 수정 반영</button>
+                <button id="fixBlocks" class="btn btn-secondary btn-small" type="button">누락 항목 채우기</button>
                 <button id="copyHtml" class="btn btn-secondary btn-small" type="button">HTML 복사</button>
                 <button id="downloadHtml" class="btn btn-secondary btn-small" type="button">HTML 저장</button>
                 <button id="dlImgs" class="btn btn-secondary btn-small" type="button">이미지 내려받기</button>
@@ -864,7 +865,7 @@
    글쓰기: 칩섭(OpenAI 호환 chat/completions, 스트리밍)
    대본: 제미나이  ·  이미지: 칩섭/OpenAI  ·  보관: 워커 KV 또는 GitHub
    ========================================================== */
-    const APP_VERSION = "22";
+    const APP_VERSION = "23";
     const BLOG_URL = "https://qaplus-haccp.blogspot.com/";
     const YOUTUBE_CHANNEL = "https://youtube.com/@qaplus_haccp?si=2eoN3yuYCoDBpLru";
     const YOUTUBE_HANDLE = "@qaplus_haccp";
@@ -1255,6 +1256,55 @@
     function visibleTextLength(html) {
       const doc = new DOMParser().parseFromString(String(html || ""), "text/html");
       return (doc.body.textContent || "").replace(/\s+/g, " ").trim().length;
+    }
+
+    /* ---------- 필수 블록 보장 ----------
+       보강 단계는 글 전체를 다시 씁니다. 그 과정에서 무료자료 CTA·면책 문구·영상 임베드를
+       빠뜨리거나, 출력 한도에 걸려 문장 중간에서 끊긴 채 끝나는 일이 있습니다.
+       그대로 두면 '발행 전 검사'에서 막혀 Blogger 로 보낼 수 없으므로,
+       모델 지시에만 의존하지 않고 발행 직전에 프로그램으로 확인해 채워 넣습니다. */
+    const DISCLAIMER_RE = /일반 실무 참고용/;
+    function hasRequiredBlocks(html) {
+      const s = String(html || "");
+      return s.includes(DRIVE_URL) && DISCLAIMER_RE.test(s);
+    }
+    function ensureRequiredBlocks(html, input) {
+      const doc = new DOMParser().parseFromString('<div id="__q">' + String(html || "") + "</div>", "text/html");
+      const root = doc.getElementById("__q");
+      if (!root) return html;
+
+      /* 1) 잘린 꼬리 정리 — 마지막 덩어리가 문장으로 끝나지 않고 짧으면 버립니다. */
+      for (let i = 0; i < 2; i += 1) {
+        const last = root.lastElementChild;
+        if (!last || !/^(P|LI|H2|H3|UL|OL)$/.test(last.tagName)) break;
+        const t = (last.textContent || "").trim();
+        if (t.length >= 25 || /[.!?…다요\u0022\u0027)\]]$/.test(t)) break;
+        last.remove();
+      }
+
+      /* 2) 유튜브 임베드 */
+      if (input.videoId && !/youtube-nocookie\.com\/embed\//i.test(root.innerHTML)) {
+        const embed = '<div style="margin:24px 0"><iframe src="https://www.youtube-nocookie.com/embed/'
+          + esc(input.videoId) + '" title="' + esc(input.topic)
+          + '" loading="lazy" allowfullscreen style="width:100%;aspect-ratio:16/9;border:0;border-radius:12px"></iframe></div>';
+        const first = root.querySelector("h2");
+        if (first) first.insertAdjacentHTML("afterend", embed);
+        else root.insertAdjacentHTML("afterbegin", embed);
+      }
+
+      /* 3) QA PLUS 무료자료 CTA */
+      if (!root.innerHTML.includes(DRIVE_URL)) {
+        root.insertAdjacentHTML("beforeend",
+          "<h2>QA PLUS 무료자료</h2><p>현장에서 바로 쓰는 점검표와 서식을 무료로 받아 보실 수 있습니다. "
+          + '<a href="' + DRIVE_URL + '" target="_blank" rel="noopener noreferrer">QA PLUS 무료자료 받기</a></p>');
+      }
+
+      /* 4) 면책 문구 */
+      if (!DISCLAIMER_RE.test(root.textContent || "")) {
+        root.insertAdjacentHTML("beforeend",
+          "<p><em>이 글은 일반 실무 참고용이며, 적용 전 최신 기준과 소관 기관 고시를 반드시 확인하시기 바랍니다.</em></p>");
+      }
+      return root.innerHTML;
     }
 
     function sanitizePostHtml(html) {
@@ -2027,9 +2077,15 @@ ${IMG_NEGATIVE}
             });
             html2 = sanitizePostHtml(clean(html2));
             delete pipe.htmlFinalPartial;
-            if (textLen(html2) >= textLen(html) * 0.95) {
+            const longEnough = textLen(html2) >= textLen(html) * 0.95;
+            const keptBlocks = hasRequiredBlocks(html2) || !hasRequiredBlocks(html);
+            if (longEnough && keptBlocks) {
               html = html2;
               setStep(4, "done", textLen(html).toLocaleString("ko-KR") + "자로 보강");
+            } else if (longEnough && !keptBlocks) {
+              // 길이는 늘었지만 CTA·면책 문구를 잃었습니다. 온전한 원본을 지킵니다.
+              logErr("보강본이 무료자료 안내나 면책 문구를 빠뜨려 1차 원고를 유지했습니다.");
+              setStep(4, "skip", "보강본이 필수 항목 누락 · 원본 유지");
             } else {
               setStep(4, "skip", "원고가 이미 충분함");
             }
@@ -2041,6 +2097,10 @@ ${IMG_NEGATIVE}
           delete pipe.htmlFinalPartial;
           savePipe(pipe);
         }
+        /* 모델이 빠뜨렸거나 잘려 나간 필수 블록을 여기서 확실히 채웁니다. */
+        html = sanitizePostHtml(ensureRequiredBlocks(html, input));
+        pipe.htmlFinal = html;
+        savePipe(pipe);
         renderPreview(html);
 
         /* 5. 제목·라벨·이미지 */
@@ -2788,6 +2848,19 @@ ${IMG_NEGATIVE}
       if (lastInput) showQuality(article.html, lastInput.targetChars);
       saveDraft();
       toast("HTML 수정 내용을 반영했어요");
+    };
+    $("#fixBlocks").onclick = () => {
+      if (!article.html) return toast("먼저 글을 만들어 주세요.");
+      const input = lastInput || {videoId:getVideoId($("#url").value), topic:$("#topic").value, targetChars:Number(cfg.len || DEFAULTS.len) || 9000};
+      const before = hasRequiredBlocks($("#htmlEditor").value);
+      article.html = sanitizePostHtml(ensureRequiredBlocks($("#htmlEditor").value, input));
+      $("#htmlEditor").value = article.html;
+      renderPreview(article.html);
+      $("#charCount").textContent = textLen(article.html).toLocaleString("ko-KR") + "자";
+      showQuality(article.html, input.targetChars);
+      saveDraft();
+      showNotice(before ? "필수 항목이 이미 모두 들어 있습니다. 잘린 끝부분만 정리했습니다."
+                        : "영상 임베드·무료자료 안내·면책 문구 중 빠진 항목을 채웠습니다.", "success");
     };
     $("#copyHtml").onclick = copyHtml;
     $("#downloadHtml").onclick = downloadHtml;

@@ -1,5 +1,5 @@
 /**
- * QA PLUS Blog Studio — 안정성 특성 테스트 (v22, 경제냠냠 파이프라인 이식판)
+ * QA PLUS Blog Studio — 안정성 특성 테스트 (v23, 경제냠냠 파이프라인 이식판)
  *
  * 이 파일은 "경제냠냠과 같은 파이프라인" 계약을 고정합니다.
  * 리팩터링으로 아래 성질이 사라지면 실패해야 합니다.
@@ -308,6 +308,59 @@ assert.match(appScript, /imgCount: "3"/);
 }
 
 /* ============================================================
+   5-b. 필수 블록 보장
+   실제 운영에서 보강 단계가 글 전체를 다시 쓰면서 무료자료 CTA·면책 문구를
+   빠뜨리고 문장 중간에서 잘린 채 끝나, 발행 전 검사에 막혀 Blogger 로
+   보낼 수 없는 일이 있었습니다. 모델 지시에만 의존하면 안 됩니다.
+   ============================================================ */
+
+assert.match(appScript, /function ensureRequiredBlocks\(html, input\)/);
+assert.match(appScript, /function hasRequiredBlocks\(html\)/);
+// 보강본이 필수 항목을 잃으면 길이가 늘었어도 채택하지 않습니다.
+assert.match(appScript, /const keptBlocks = hasRequiredBlocks\(html2\) \|\| !hasRequiredBlocks\(html\)/);
+assert.match(appScript, /longEnough && keptBlocks/);
+assert.match(appScript, /보강본이 필수 항목 누락 · 원본 유지/);
+// 발행 직전에 한 번 더 확실히 채웁니다.
+assert.match(appScript, /html = sanitizePostHtml\(ensureRequiredBlocks\(html, input\)\)/);
+// 이미 만든 글도 수동으로 고칠 수 있어야 합니다.
+assert.match(html, /id="fixBlocks"/);
+
+{
+  const driveUrl = /const DRIVE_URL = "([^"]*)";/.exec(appScript)[1];
+  const prelude = [
+    `esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));`,
+    `DRIVE_URL = ${JSON.stringify(driveUrl)};`,
+    `DISCLAIMER_RE = ${/const DISCLAIMER_RE = ([^;]+);/.exec(appScript)[1]};`
+  ].join("\n");
+  const ctx = runFunctions(["ensureRequiredBlocks", "hasRequiredBlocks"], prelude);
+  const input = { videoId: "t1c2XbNe3kM", topic: "HACCP 12절차" };
+
+  // 실제로 나왔던 증상: CTA·면책 없음 + "<p>선행요건</p>" 로 잘려 끝남
+  const broken = "<h2>제목</h2><p>본문입니다. 현장에서 확인해야 합니다.</p><p>선행요건</p>";
+  assert.equal(ctx.hasRequiredBlocks(broken), false);
+
+  const fixed = ctx.ensureRequiredBlocks(broken, input);
+  assert.ok(fixed.includes("youtube-nocookie.com/embed/t1c2XbNe3kM"), "영상 임베드를 채워야 합니다");
+  assert.ok(fixed.includes("drive.google.com"), "무료자료 CTA 를 채워야 합니다");
+  assert.match(fixed, /일반 실무 참고용/, "면책 문구를 채워야 합니다");
+  assert.doesNotMatch(fixed, /<p>선행요건<\/p>/, "잘린 꼬리를 버려야 합니다");
+  assert.equal(ctx.hasRequiredBlocks(fixed), true);
+
+  // 이미 온전한 글은 건드리지 않습니다(중복 삽입 금지).
+  const again = ctx.ensureRequiredBlocks(fixed, input);
+  assert.equal((again.match(/youtube-nocookie/g) || []).length, 1);
+  assert.equal((again.match(/일반 실무 참고용/g) || []).length, 1);
+
+  // 온전한 문장으로 끝나면 지우지 않습니다.
+  const complete = '<h2>제목</h2><p>현장에서 반드시 확인해야 하는 항목입니다.</p>'
+    + '<p><a href="' + driveUrl + '">자료</a></p><p>이 글은 일반 실무 참고용입니다.</p>';
+  assert.match(ctx.ensureRequiredBlocks(complete, { videoId: "", topic: "x" }), /현장에서 반드시 확인해야 하는 항목입니다/);
+
+  // 영상이 없으면 임베드를 넣지 않습니다.
+  assert.doesNotMatch(ctx.ensureRequiredBlocks("<h2>제목</h2><p>본문입니다.</p>", { videoId: "", topic: "x" }), /youtube-nocookie/);
+}
+
+/* ============================================================
    6. 이미지 경로 순서 · 영구 주소
    ============================================================ */
 
@@ -343,14 +396,14 @@ assert.match(appScript, /findExistingBloggerPost/, "같은 영상 중복 발행 
 assert.match(appScript, /scope:"https:\/\/www\.googleapis\.com\/auth\/blogger"/);
 assert.doesNotMatch(appScript, /youtube\.force-ssl/);
 
-assert.match(html, /<meta name="qa-plus-app-version" content="22">/);
-assert.match(html, /id="appVersion"[^>]*>APP v22<\/span>/);
-assert.equal(extractConst(appScript, "APP_VERSION").replace(/"/g, ""), "22");
+assert.match(html, /<meta name="qa-plus-app-version" content="23">/);
+assert.match(html, /id="appVersion"[^>]*>APP v23<\/span>/);
+assert.equal(extractConst(appScript, "APP_VERSION").replace(/"/g, ""), "23");
 assert.match(appScript, /serviceWorker\.register\("\.\/sw\.js\?v=" \+ APP_VERSION, \{scope:"\.\/", updateViaCache:"none"\}\)/);
 assert.match(appScript, /new URL\("\.\/reset\.html", window\.location\.href\)/);
-assert.match(swSource, /const CACHE_NAME = "qaplus-blog-studio-v22"/);
-assert.doesNotMatch(swSource, /qaplus-blog-studio-v21/);
-assert.match(resetSource, /const FALLBACK_VERSION = "22"/);
+assert.match(swSource, /const CACHE_NAME = "qaplus-blog-studio-v23"/);
+assert.doesNotMatch(swSource, /qaplus-blog-studio-v22/);
+assert.match(resetSource, /const FALLBACK_VERSION = "23"/);
 assert.match(resetSource, /key\.startsWith\("qaplus-blog-studio-"\)/);
 
 // CSP 는 파이프라인이 실제로 부르는 호스트를 모두 허용해야 합니다.
