@@ -25,7 +25,19 @@ export function extractFunction(source, name) {
   const asyncStart = source.indexOf(`async function ${name}(`);
   const start = asyncStart >= 0 ? asyncStart : source.indexOf(`function ${name}(`);
   assert.notEqual(start, -1, `${name} should exist`);
-  const bodyStart = source.indexOf("{", start);
+  // 매개변수가 구조 분해({model, ...})일 수 있으므로 인자 목록을 먼저 건너뜁니다.
+  const parenStart = source.indexOf("(", start);
+  let parenDepth = 0;
+  let parenEnd = -1;
+  for (let index = parenStart; index < source.length; index += 1) {
+    if (source[index] === "(") parenDepth += 1;
+    else if (source[index] === ")") {
+      parenDepth -= 1;
+      if (parenDepth === 0) { parenEnd = index; break; }
+    }
+  }
+  assert.notEqual(parenEnd, -1, `${name} parameter list is incomplete`);
+  const bodyStart = source.indexOf("{", parenEnd);
   let depth = 0;
   let quote = "";
   let escaped = false;

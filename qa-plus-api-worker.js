@@ -6,6 +6,10 @@
  */
 
 const UPSTREAM_ORIGIN = "https://api.cheapsub.im";
+const UPSTREAM_TARGETS = {
+  cheapsub: "https://api.cheapsub.im",
+  openai: "https://api.openai.com"
+};
 const PUBLIC_IMAGE_PREFIX = "/blog-images/";
 const MAX_STORED_IMAGE_BYTES = 10_000_000;
 const IMAGE_CACHE_CONTROL = "public, max-age=31536000, immutable";
@@ -29,6 +33,22 @@ const ALLOWED_PATHS = new Map([
   ["/v1/images/proxy", new Set(["GET"])],
   ["/v1/models", new Set(["GET"])]
 ]);
+
+/**
+ * 요청 경로를 상류 서비스와 상류 경로로 나눕니다.
+ *   /cheapsub/v1/chat/completions -> {service:"cheapsub", path:"/v1/chat/completions"}
+ *   /openai/v1/images/generations -> {service:"openai",   path:"/v1/images/generations"}
+ *   /v1/chat/completions          -> {service:"cheapsub", path:"/v1/chat/completions"}  (구버전 호환)
+ */
+function routeRequest(pathname) {
+  for (const service of Object.keys(UPSTREAM_TARGETS)) {
+    const prefix = "/" + service;
+    if (pathname === prefix || pathname.startsWith(prefix + "/")) {
+      return { service, path: pathname.slice(prefix.length) || "/" };
+    }
+  }
+  return { service: "cheapsub", path: pathname };
+}
 
 const FORWARDED_HEADERS = [
   "accept",
@@ -101,10 +121,20 @@ function safeImageSource(value) {
   }
 }
 
+/** 매직 넘버로 실제 이미지 형식을 판별합니다. gpt-image 는 webp/png 를 돌려주기도 합니다. */
+function sniffImageType(bytes) {
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
+  if (bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return "image/png";
+  if (bytes.length >= 12
+    && bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46
+    && bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50) return "image/webp";
+  return "image/jpeg";
+}
+
 async function loadGeneratedImage(item, request) {
   if (item?.b64_json) {
     const bytes = decodeBase64(item.b64_json);
-    return {bytes,contentType:"image/jpeg"};
+    return {bytes,contentType:sniffImageType(bytes)};
   }
 
   const source = safeImageSource(item?.proxy_url || item?.url || item?.download_url);
@@ -210,7 +240,24 @@ export default {
       );
     }
 
-    const methods = ALLOWED_PATHS.get(url.pathname);
+    if (request.method === "GET" && (url.pathname === "/" || url.pathname === "")) {
+      return new Response(JSON.stringify({
+        ok: true,
+        usage: "/cheapsub/v1/chat/completions 또는 /openai/v1/images/generations 형태로 호출하세요."
+      }), {
+        status: 200,
+        headers: {
+          ...corsHeaders(origin),
+          "Content-Type": "application/json; charset=utf-8",
+          "Cache-Control": "no-store"
+        }
+      });
+    }
+
+    const route = routeRequest(url.pathname);
+    const upstreamOrigin = UPSTREAM_TARGETS[route.service];
+
+    const methods = ALLOWED_PATHS.get(route.path);
     if (!methods) {
       return jsonResponse(origin, 404, "지원하지 않는 경로입니다.");
     }
@@ -239,7 +286,7 @@ export default {
 
     let upstream;
     try {
-      upstream = await fetch(`${UPSTREAM_ORIGIN}${url.pathname}${url.search}`, {
+      upstream = await fetch(`${upstreamOrigin}${route.path}${url.search}`, {
         method: request.method,
         headers: upstreamHeaders,
         body: request.method === "GET" ? undefined : request.body,
@@ -249,11 +296,11 @@ export default {
       return jsonResponse(
         origin,
         502,
-        `CheapSub 연결 실패: ${error instanceof Error ? error.message : "알 수 없는 오류"}`
+        `${route.service === "openai" ? "OpenAI" : "CheapSub"} 연결 실패: ${error instanceof Error ? error.message : "알 수 없는 오류"}`
       );
     }
 
-    if (url.pathname === "/v1/images/generations" && upstream.ok) {
+    if (route.path === "/v1/images/generations" && upstream.ok) {
       let data;
       try {
         data = await upstream.json();
