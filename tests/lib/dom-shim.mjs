@@ -155,6 +155,10 @@ class ShimDocument {
     if (this._root.getAttribute("id") === id) return this._root;
     return this._root.querySelector("#" + id);
   }
+
+  createElement(tagName) {
+    return new ShimElement(tagName);
+  }
 }
 
 function serialize(node) {

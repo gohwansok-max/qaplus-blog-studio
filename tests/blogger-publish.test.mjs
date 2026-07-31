@@ -1,51 +1,22 @@
+/**
+ * Blogger 발행 계약 테스트 — 페이로드 · 오류 문구 · 블로그 ID 조회 · 중복 방지
+ */
 import assert from "node:assert/strict";
-import fs from "node:fs";
-import path from "node:path";
 import vm from "node:vm";
-import { fileURLToPath } from "node:url";
+import { extractFunction, getAppScript } from "./lib/app-script.mjs";
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-const html = fs.readFileSync(path.join(here, "..", "index.html"), "utf8");
-const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)]
-  .map((match) => match[1])
-  .filter((script) => script.trim());
-const appScript = scripts.at(-1);
-
-assert.ok(appScript, "inline application script should exist");
+const appScript = getAppScript();
 new vm.Script(appScript, { filename: "index.html:inline-script" });
 
-function extractFunction(source, name) {
-  const asyncStart = source.indexOf(`async function ${name}(`);
-  const start = asyncStart >= 0 ? asyncStart : source.indexOf(`function ${name}(`);
-  assert.notEqual(start, -1, `${name} should exist`);
-  const bodyStart = source.indexOf("{", start);
-  let depth = 0;
-  let quote = "";
-  let escaped = false;
-  for (let index = bodyStart; index < source.length; index += 1) {
-    const char = source[index];
-    if (quote) {
-      if (escaped) escaped = false;
-      else if (char === "\\") escaped = true;
-      else if (char === quote) quote = "";
-      continue;
-    }
-    if (char === "\"" || char === "'" || char === "`") {
-      quote = char;
-      continue;
-    }
-    if (char === "{") depth += 1;
-    if (char === "}") {
-      depth -= 1;
-      if (depth === 0) return source.slice(start, index + 1);
-    }
-  }
-  throw new Error(`${name} body is incomplete`);
-}
+const payloadFn = extractFunction(appScript, "createBloggerPostPayload");
+const errorFn = extractFunction(appScript, "createBloggerApiError");
+const resolveBlogIdFn = extractFunction(appScript, "resolveBlogId");
+const findExistingFn = extractFunction(appScript, "findExistingBloggerPost");
 
-const payloadFunction = extractFunction(appScript, "createBloggerPostPayload");
+/* ---------- 발행 페이로드 ---------- */
+
 const payloadContext = {};
-vm.runInNewContext(`${payloadFunction}; result = createBloggerPostPayload(
+vm.runInNewContext(`${payloadFn}; result = createBloggerPostPayload(
   "  테스트 제목  ",
   "<p>본문</p>",
   ["HACCP", "", "식품안전"]
@@ -57,89 +28,144 @@ assert.deepEqual(payload, {
   content: "<p>본문</p>",
   labels: ["HACCP", "식품안전"]
 });
+// Blogger API 가 요구하는 세 키만 보냅니다. kind/blog/id 를 붙이면 400 이 납니다.
 assert.deepEqual(Object.keys(payload).sort(), ["content", "labels", "title"]);
+assert.doesNotMatch(payloadFn, /\bkind\b|\bblog\b|\bid\b/);
 
-const errorFunction = extractFunction(appScript, "createBloggerApiError");
+// 라벨은 최대 10개
+const manyLabelsContext = {};
+vm.runInNewContext(
+  `${payloadFn}; result = createBloggerPostPayload("제목","<p>x</p>",Array.from({length:14},(_,i)=>"L"+i));`,
+  manyLabelsContext
+);
+assert.equal(manyLabelsContext.result.labels.length, 10);
+
+/* ---------- 오류 문구 ---------- */
+
 const errorContext = {};
-vm.runInNewContext(`${errorFunction}; result = createBloggerApiError(
-  { status: 403 },
-  { error: { message: "The caller does not have permission" } },
-  "Blogger 글 발행"
-);`, errorContext);
-assert.match(errorContext.result.message, /Blogger 발행 권한/);
-assert.equal(errorContext.result.status, 403);
+vm.runInNewContext(`${errorFn};
+  r401 = createBloggerApiError({status:401},{error:{message:"expired"}},"Blogger 글 발행");
+  r403 = createBloggerApiError({status:403},{error:{message:"The caller does not have permission"}},"Blogger 글 발행");
+  r500 = createBloggerApiError({status:500},{error:{message:"backend error"}},"Blogger 글 발행");
+`, errorContext);
+assert.match(errorContext.r401.message, /다시 연결|토큰/);
+assert.equal(errorContext.r401.status, 401);
+assert.match(errorContext.r403.message, /Blogger 발행 권한|권한을 모두 허용/);
+assert.equal(errorContext.r403.status, 403);
+assert.match(errorContext.r500.message, /backend error/);
 
-const resolveBlogIdFunction = extractFunction(appScript, "resolveBlogId");
-const resolveWriteAccessFunction = extractFunction(appScript, "resolveBloggerWriteAccess");
-const accessCalls = [];
-const accessContext = {
-  BLOG_URL:"https://qaplus-haccp.blogspot.com/",
-  state:{ googleToken:"test-token", blogId:"", bloggerWritable:false },
-  fetch:async (url) => {
-    accessCalls.push(String(url));
-    if (String(url).includes("/blogs/byurl")) {
-      return { ok:true, status:200, json:async () => ({ id:"5694600166844060136" }) };
+/* ---------- 블로그 ID 자동 조회 ---------- */
+
+{
+  const calls = [];
+  const context = {
+    BLOG_URL: "https://qaplus-haccp.blogspot.com/",
+    gToken: "test-token",
+    cfg: { blogId: "" },
+    save: () => {},
+    $: () => ({ value: "" }),
+    URL,
+    fetch: async (url) => {
+      calls.push(String(url));
+      return { ok: true, status: 200, json: async () => ({ id: "5694600166844060136" }) };
     }
-    return {
-      ok:true,
-      status:200,
-      json:async () => ({
-        blog_user_info:{
-          userId:"02207174247840499887",
-          blogId:"5694600166844060136",
-          hasAdminAccess:true
-        }
-      })
-    };
-  }
-};
-await vm.runInNewContext(`(async () => {
-  ${errorFunction}
-  ${resolveBlogIdFunction}
-  ${resolveWriteAccessFunction}
-  result = await resolveBloggerWriteAccess();
-})()`, accessContext);
-assert.equal(accessContext.state.bloggerWritable, true);
-assert.equal(accessContext.result.hasAdminAccess, true);
-assert.match(accessCalls[1], /\/users\/self\/blogs\/5694600166844060136$/);
+  };
+  await vm.runInNewContext(`(async () => {
+    ${errorFn}
+    ${resolveBlogIdFn}
+    result = await resolveBlogId();
+  })()`, context);
+  assert.equal(context.result, "5694600166844060136");
+  assert.match(calls[0], /blogs\/byurl\?url=/);
 
-const fetchVideosFunction = extractFunction(appScript, "fetchQaPlusVideos");
-const videoCalls = [];
-const videoContext = {
-  YOUTUBE_HANDLE:"@qaplus_haccp",
-  state:{googleToken:"test-token",youtubeOwned:false,youtubeChannel:null,youtubeVideos:[]},
-  els:{youtubeStatus:{},loadYoutube:{disabled:true}},
-  setBadge:() => {},
-  renderYoutubeVideos:() => {},
-  googleApi:async (url) => {
-    videoCalls.push(String(url));
-    if (String(url).includes("forHandle=")) {
-      return {items:[{id:"target-channel",contentDetails:{relatedPlaylists:{uploads:"uploads-list"}}}]};
-    }
-    if (String(url).includes("mine=true")) throw new Error("connected account has no YouTube channel");
-    return {items:[{contentDetails:{videoId:"video-1"},snippet:{title:"HACCP 공개 영상"}}]};
-  }
-};
-await vm.runInNewContext(`(async () => {
-  ${fetchVideosFunction}
-  result = await fetchQaPlusVideos();
-})()`, videoContext);
-assert.equal(videoContext.result.length,1);
-assert.equal(videoContext.state.youtubeOwned,false);
-assert.equal(videoContext.state.youtubeChannel.id,"target-channel");
-assert.equal(videoContext.els.loadYoutube.disabled,false);
-assert.ok(videoCalls.some((url) => url.includes("mine=true")));
-assert.ok(videoCalls.some((url) => url.includes("playlistItems")));
+  // 이미 저장된 ID 가 있으면 네트워크를 타지 않습니다.
+  const cached = { cfg: { blogId: "999" }, fetch: () => { throw new Error("불필요한 호출"); }, save: () => {}, $: () => ({}), BLOG_URL: "x", gToken: "t", URL };
+  await vm.runInNewContext(`(async () => {
+    ${errorFn}
+    ${resolveBlogIdFn}
+    result = await resolveBlogId();
+  })()`, cached);
+  assert.equal(cached.result, "999");
+}
 
-assert.match(appScript, /GOOGLE_SCOPES[\s\S]*?\.join\(" "\)/);
-assert.match(appScript, /hasGrantedAllScopes/);
-assert.doesNotMatch(appScript, /youtube\.force-ssl/);
-assert.match(appScript, /youtubeOk = videos\.length > 0/);
-assert.match(appScript, /Blogger와 YouTube의 관리 계정이 달라도 정상/);
-assert.doesNotMatch(appScript, /QA PLUS 계정으로 다시 연결|채널을 소유한 Google 계정으로 다시 연결/);
-assert.match(appScript, /users\/self\/blogs\/\$\{encodeURIComponent\(blogId\)\}/);
-assert.match(appScript, /state\.bloggerWritable/);
-assert.match(appScript, /JSON\.stringify\(createBloggerPostPayload/);
-assert.doesNotMatch(payloadFunction, /\bkind\b|\bblog\b|\bid\b/);
+/* ---------- 중복 발행 방지 ---------- */
+
+{
+  // 히스토리에 있으면 즉시 반환합니다.
+  const fromHistory = {
+    gToken: "t", URL,
+    fetch: () => { throw new Error("불필요한 호출"); }
+  };
+  await vm.runInNewContext(`(async () => {
+    ${errorFn}
+    ${findExistingFn}
+    result = await findExistingBloggerPost("blog1","vid1","제목",{id:"post-9",url:"https://x/9"});
+  })()`, fromHistory);
+  assert.equal(fromHistory.result.id, "post-9");
+
+  // 본문에 영상 ID 가 들어 있는 글을 찾아냅니다.
+  const byVideo = {
+    gToken: "t", URL,
+    fetch: async () => ({
+      ok: true, status: 200,
+      json: async () => ({ items: [
+        { id: "other", title: "관계없는 글", content: "<p>없음</p>" },
+        { id: "match", title: "다른 제목", content: "<iframe src=\"https://www.youtube-nocookie.com/embed/vid1\"></iframe>" }
+      ] })
+    })
+  };
+  await vm.runInNewContext(`(async () => {
+    ${errorFn}
+    ${findExistingFn}
+    result = await findExistingBloggerPost("blog1","vid1","새 제목",null);
+  })()`, byVideo);
+  assert.equal(byVideo.result.id, "match");
+
+  // 영상 ID 가 없으면 제목이 정확히 같은 글로 판단합니다.
+  const byTitle = {
+    gToken: "t", URL,
+    fetch: async () => ({
+      ok: true, status: 200,
+      json: async () => ({ items: [{ id: "titled", title: "  CCP 이탈 조치 ", content: "<p>x</p>" }] })
+    })
+  };
+  await vm.runInNewContext(`(async () => {
+    ${errorFn}
+    ${findExistingFn}
+    result = await findExistingBloggerPost("blog1","","CCP 이탈 조치",null);
+  })()`, byTitle);
+  assert.equal(byTitle.result.id, "titled");
+
+  // 일치하는 글이 없으면 null — 새 글로 발행합니다.
+  const none = {
+    gToken: "t", URL,
+    fetch: async () => ({ ok: true, status: 200, json: async () => ({ items: [] }) })
+  };
+  await vm.runInNewContext(`(async () => {
+    ${errorFn}
+    ${findExistingFn}
+    result = await findExistingBloggerPost("blog1","vid2","없는 제목",null);
+  })()`, none);
+  assert.equal(none.result, null);
+}
+
+/* ---------- 발행 흐름 계약 ---------- */
+
+// 기본값은 임시저장, 기존 글이 있으면 사용자 확인 후 PUT 으로 업데이트합니다.
+assert.match(appScript, /value="draft" checked|name="publishMode"/);
+assert.match(appScript, /const isDraft = mode === "draft"/);
+assert.match(appScript, /window\.confirm\(/);
+assert.match(appScript, /method:updating \? "PUT" : "POST"/);
+assert.match(appScript, /posts\?isDraft=" \+ isDraft/);
+assert.match(appScript, /if \(!response\.ok \|\| !data\.id\)/);
+// 발행 전 검사를 통과하지 못하면 요청을 보내지 않습니다.
+assert.match(appScript, /try \{ validatePost\(false\); \} catch \(e\) \{ showNotice\(e\.message, "error"\); return; \}/);
+// 401/403 이면 토큰을 버리고 재연결을 요구합니다.
+assert.match(appScript, /if \(e\?\.status === 401 \|\| e\?\.status === 403\) \{\s*gToken = "";/);
+// 발행 성공 시 영상 ID 기준으로 이력을 남깁니다.
+assert.match(appScript, /history\[videoId\] = \{id:data\.id/);
+assert.match(appScript, /localStorage\.setItem\(HISTORY_KEY, JSON\.stringify\(history\)\)/);
+// Blogger 권한만 요청합니다.
+assert.match(appScript, /scope:"https:\/\/www\.googleapis\.com\/auth\/blogger"/);
 
 console.log("blogger-publish tests: PASS");
