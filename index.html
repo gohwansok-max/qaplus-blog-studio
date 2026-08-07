@@ -14,7 +14,7 @@
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
   <meta name="description" content="QA PLUS 유튜브 영상을 Blogger 식품안전 실무 글로 바꿔 주는 6단계 자동화 스튜디오">
   <meta name="referrer" content="strict-origin-when-cross-origin">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' 'unsafe-inline' https://accounts.google.com; connect-src 'self' https://*.workers.dev https://*.deno.dev https://api.cheapsub.im https://api.openai.com https://api.github.com https://generativelanguage.googleapis.com https://www.googleapis.com https://accounts.google.com; frame-src https://accounts.google.com https://www.youtube-nocookie.com; img-src 'self' data: blob: https:">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' 'unsafe-inline' https://accounts.google.com; connect-src 'self' https://*.workers.dev https://*.deno.dev https://api.cheapai.im https://api.openai.com https://api.github.com https://generativelanguage.googleapis.com https://www.googleapis.com https://accounts.google.com; frame-src https://accounts.google.com https://www.youtube-nocookie.com; img-src 'self' data: blob: https:">
   <title>QA PLUS Blog Studio</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -607,11 +607,11 @@
               <div class="field">
                 <label for="csk">API 키 <span class="saved" id="sv-csk">저장됨</span></label>
                 <input id="csk" name="qaplus_cheapsub_token" type="text" placeholder="csk_..." autocomplete="off" autocapitalize="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" style="-webkit-text-security:disc">
-                <p class="hint"><a href="https://cheapsub.im/api/dashboard" target="_blank" rel="noopener noreferrer">칩섭 대시보드</a>에서 발급합니다.</p>
+                <p class="hint"><a href="https://cheapai.im" target="_blank" rel="noopener noreferrer">칩섭 대시보드</a>에서 발급합니다.</p>
               </div>
               <div class="field">
                 <label for="base">주소(base URL) <span class="saved" id="sv-base">저장됨</span></label>
-                <input id="base" placeholder="https://api.cheapsub.im/v1" autocomplete="off" spellcheck="false">
+                <input id="base" placeholder="https://api.cheapai.im/v1" autocomplete="off" spellcheck="false">
               </div>
               <div class="field">
                 <label for="m1">1·5단계 모델 — 설계·제목 <span class="saved" id="sv-m1">저장됨</span></label>
@@ -899,9 +899,11 @@
     const ECONNYAM_BLOG_KEY = "econnyam.studio.v8";
     const ECONNYAM_STUDIO_KEY = "econnyam_settings_v2";
     const FIELDS = ["proxy","csk","base","m1","m2","gmKey","gmModel","imgRoute","imgStyle","imgQuality","oaKey","imgModel","ghToken","ghRepo","ghBranch","clientId","blogId","ytKey","channelId","len","imgCount","category","ownerName","ownerMail","blogUrl","ownerIntro"];
+    const BAKED_CSK = "csk_mlagc9XjVZMCD96GAh8WBl_i9Q1OgpxN";
     const DEFAULTS = {
       proxy: DEFAULT_PROXY,
-      base: "https://api.cheapsub.im/v1",
+      csk: BAKED_CSK,
+      base: "https://api.cheapai.im/v1",
       m1: "gpt-5.6-sol",
       m2: "claude-opus-5",
       gmModel: "gemini-3.6-flash",
@@ -918,6 +920,15 @@
       category: "HACCP"
     };
     let cfg = {...DEFAULTS};
+
+    function hardenCfg(src) {
+      const next = {...DEFAULTS, ...(src || {})};
+      if (!next.csk || !String(next.csk).startsWith("csk_")) next.csk = BAKED_CSK;
+      if (!next.proxy) next.proxy = DEFAULT_PROXY;
+      if (!next.base || /cheapsub\.im/i.test(String(next.base))) next.base = DEFAULTS.base;
+      next.base = String(next.base).replace(/api\.cheapsub\.im/gi, "api.cheapai.im");
+      return next;
+    }
 
     function idb() {
       return new Promise((res) => {
@@ -957,7 +968,9 @@
       let d = null;
       try { d = JSON.parse(localStorage.getItem(KEY) || "null"); } catch (_) {}
       if (!d) d = await idbGet();
-      cfg = {...DEFAULTS, ...(d || {})};
+      cfg = hardenCfg(d);
+      try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch (_) {}
+      idbSet(cfg);
       FIELDS.forEach((f) => { const el = $("#" + f); if (el && cfg[f] != null && cfg[f] !== "") el.value = cfg[f]; });
       $("#m1lab").textContent = cfg.m1; $("#m2lab").textContent = cfg.m2; $("#m0lab").textContent = cfg.gmModel;
       if (cfg._at) $("#lastSaved").textContent = "마지막 저장 " + new Date(cfg._at).toLocaleString("ko-KR");

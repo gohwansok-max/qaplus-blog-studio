@@ -424,7 +424,7 @@ assert.match(resetSource, /key\.startsWith\("qaplus-blog-studio-"\)/);
 const csp = /content="(default-src[^"]+)"/.exec(html)[1];
 for (const host of [
   "https://*.workers.dev",
-  "https://api.cheapsub.im",
+  "https://api.cheapai.im",
   "https://api.openai.com",
   "https://api.github.com",
   "https://generativelanguage.googleapis.com",
@@ -438,7 +438,7 @@ for (const host of [
    ============================================================ */
 
 assert.match(workerSource, /function routeRequest\(pathname\)/);
-assert.match(workerSource, /cheapsub: "https:\/\/api\.cheapsub\.im"/);
+assert.match(workerSource, /cheapsub: "https:\/\/api\.cheapai\.im"/);
 assert.match(workerSource, /openai: "https:\/\/api\.openai\.com"/);
 assert.match(workerSource, /route\.path === "\/v1\/images\/generations" && upstream\.ok/);
 assert.match(workerSource, /function sniffImageType\(bytes\)/, "저장 형식을 매직 넘버로 판별해야 합니다");

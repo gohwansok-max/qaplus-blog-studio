@@ -5,9 +5,9 @@
  * This Worker stores no API key, request body, or generated content.
  */
 
-const UPSTREAM_ORIGIN = "https://api.cheapsub.im";
+const UPSTREAM_ORIGIN = "https://api.cheapai.im";
 const UPSTREAM_TARGETS = {
-  cheapsub: "https://api.cheapsub.im",
+  cheapsub: "https://api.cheapai.im",
   openai: "https://api.openai.com"
 };
 const PUBLIC_IMAGE_PREFIX = "/blog-images/";
@@ -15,7 +15,7 @@ const MAX_STORED_IMAGE_BYTES = 10_000_000;
 const IMAGE_CACHE_CONTROL = "public, max-age=31536000, immutable";
 
 const ALLOWED_IMAGE_SOURCE_HOSTS = new Set([
-  "api.cheapsub.im",
+  "api.cheapai.im",
   "file.kayops.com"
 ]);
 
@@ -141,7 +141,7 @@ async function loadGeneratedImage(item, request) {
   if (!source) throw new Error("이미지 공급자가 영구 저장 가능한 HTTPS 주소를 반환하지 않았습니다.");
 
   const headers = new Headers({Accept:"image/*"});
-  if (source.hostname === "api.cheapsub.im") {
+  if (source.hostname === "api.cheapai.im") {
     const authorization = request.headers.get("Authorization");
     if (authorization) headers.set("Authorization",authorization);
   }

@@ -55,7 +55,7 @@ try {
     const kv = createKvMock();
     const imageBytes = new Uint8Array([0xff,0xd8,0xff,0xe0,0x00,0x10,0x4a,0x46,0x49,0x46,0xff,0xd9]);
     globalThis.fetch = async (url) => {
-      assert.match(String(url),/api\.cheapsub\.im\/v1\/images\/generations$/);
+      assert.match(String(url),/api\.cheapai\.im\/v1\/images\/generations$/);
       return new Response(JSON.stringify({
         data:[{b64_json:Buffer.from(imageBytes).toString("base64")}]
       }),{
@@ -96,7 +96,7 @@ try {
           headers:{"Content-Type":"application/json"}
         });
       }
-      assert.equal(String(url),"https://api.cheapsub.im/v1/images/proxy?url=https%3A%2F%2Ffile.kayops.com%2Ffile%2Fmock.png");
+      assert.equal(String(url),"https://api.cheapai.im/v1/images/proxy?url=https%3A%2F%2Ffile.kayops.com%2Ffile%2Fmock.png");
       return new Response(imageBytes,{
         status:200,
         headers:{"Content-Type":"image/png"}
