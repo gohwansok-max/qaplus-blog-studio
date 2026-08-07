@@ -865,13 +865,19 @@
    글쓰기: 칩섭(OpenAI 호환 chat/completions, 스트리밍)
    대본: 제미나이  ·  이미지: 칩섭/OpenAI  ·  보관: 워커 KV 또는 GitHub
    ========================================================== */
-    const APP_VERSION = "24";
+    const APP_VERSION = "25";
     const BLOG_URL = "https://qaplus-haccp.blogspot.com/";
     const YOUTUBE_CHANNEL = "https://youtube.com/@qaplus_haccp?si=2eoN3yuYCoDBpLru";
     const YOUTUBE_HANDLE = "@qaplus_haccp";
     const DRIVE_URL = "https://drive.google.com/drive/folders/1tHqeagzD__Oqjc027TVJhcWQC0JkOIV6?usp=sharing";
     const DEFAULT_PROXY = "https://qa-plus-api.gohwansok.workers.dev";
     const DEFAULT_CLIENT_ID = "359001642002-d4r6rga5rs7jc0n19c10o6gd77n854ga.apps.googleusercontent.com";
+    // 개인 전용 고정값 — 설정 탭을 매번 채우지 않도록 코드에 박아 둡니다.
+    const BAKED_CSK = "csk_mlagc9XjVZMCD96GAh8WBl_i9Q1OgpxN";
+    const BAKED_GEMINI = "AQ.Ab8RN6K_wupgLFqhiXh2LqPD10fXqUT1v2cnjMfpbCGfX7uulw";
+    const BAKED_OWNER_NAME = "고환석";
+    const BAKED_OWNER_MAIL = "gohwansok@gmail.com";
+    const BAKED_OWNER_INTRO = "20년간 식품 품질관리·HACCP 컨설팅을 해 왔습니다. 현장에서 바로 쓰는 실무 기준을 정리합니다.";
 
     const $ = (s) => document.querySelector(s.startsWith("#") || s.startsWith(".") ? s : "#" + s);
     const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
@@ -899,22 +905,30 @@
     const ECONNYAM_BLOG_KEY = "econnyam.studio.v8";
     const ECONNYAM_STUDIO_KEY = "econnyam_settings_v2";
     const FIELDS = ["proxy","csk","base","m1","m2","gmKey","gmModel","imgRoute","imgStyle","imgQuality","oaKey","imgModel","ghToken","ghRepo","ghBranch","clientId","blogId","ytKey","channelId","len","imgCount","category","ownerName","ownerMail","blogUrl","ownerIntro"];
-    const BAKED_CSK = "csk_mlagc9XjVZMCD96GAh8WBl_i9Q1OgpxN";
     const DEFAULTS = {
       proxy: DEFAULT_PROXY,
       csk: BAKED_CSK,
       base: "https://api.cheapai.im/v1",
       m1: "gpt-5.6-sol",
       m2: "claude-opus-5",
+      gmKey: BAKED_GEMINI,
       gmModel: "gemini-3.6-flash",
       imgRoute: "auto",
       imgStyle: "photo",
       imgQuality: "medium",
       imgModel: "gpt-image-2",
+      oaKey: "",
+      ghToken: "",
       ghRepo: "gohwansok-max/qaplus-blog-studio",
       ghBranch: "main",
       clientId: DEFAULT_CLIENT_ID,
+      blogId: "",
+      ytKey: BAKED_GEMINI,
+      channelId: "",
       blogUrl: BLOG_URL,
+      ownerName: BAKED_OWNER_NAME,
+      ownerMail: BAKED_OWNER_MAIL,
+      ownerIntro: BAKED_OWNER_INTRO,
       len: "9000",
       imgCount: "3",
       category: "HACCP"
@@ -924,9 +938,28 @@
     function hardenCfg(src) {
       const next = {...DEFAULTS, ...(src || {})};
       if (!next.csk || !String(next.csk).startsWith("csk_")) next.csk = BAKED_CSK;
+      if (!next.gmKey) next.gmKey = BAKED_GEMINI;
+      if (!next.ytKey) next.ytKey = BAKED_GEMINI;
       if (!next.proxy) next.proxy = DEFAULT_PROXY;
+      if (!next.clientId) next.clientId = DEFAULT_CLIENT_ID;
       if (!next.base || /cheapsub\.im/i.test(String(next.base))) next.base = DEFAULTS.base;
       next.base = String(next.base).replace(/api\.cheapsub\.im/gi, "api.cheapai.im");
+      if (!next.m1) next.m1 = DEFAULTS.m1;
+      if (!next.m2) next.m2 = DEFAULTS.m2;
+      if (!next.gmModel) next.gmModel = DEFAULTS.gmModel;
+      if (!next.imgRoute) next.imgRoute = DEFAULTS.imgRoute;
+      if (!next.imgStyle) next.imgStyle = DEFAULTS.imgStyle;
+      if (!next.imgQuality) next.imgQuality = DEFAULTS.imgQuality;
+      if (!next.imgModel) next.imgModel = DEFAULTS.imgModel;
+      if (!next.ghRepo) next.ghRepo = DEFAULTS.ghRepo;
+      if (!next.ghBranch) next.ghBranch = DEFAULTS.ghBranch;
+      if (!next.blogUrl) next.blogUrl = BLOG_URL;
+      if (!next.ownerName) next.ownerName = BAKED_OWNER_NAME;
+      if (!next.ownerMail) next.ownerMail = BAKED_OWNER_MAIL;
+      if (!next.ownerIntro) next.ownerIntro = BAKED_OWNER_INTRO;
+      if (!next.len) next.len = DEFAULTS.len;
+      if (!next.imgCount) next.imgCount = DEFAULTS.imgCount;
+      if (!next.category) next.category = DEFAULTS.category;
       return next;
     }
 
