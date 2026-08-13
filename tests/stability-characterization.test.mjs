@@ -160,6 +160,7 @@ assert.match(appScript, /localStorage\.removeItem\(PIPE_KEY\)/, "완료 후 체�
 // 제미나이 백그라운드 작업 이어받기
 assert.match(appScript, /const GM_JOB_KEY = KEY \+ "\.gemini-job"/);
 assert.match(appScript, /v1beta\/interactions/);
+assert.match(appScript, /for \(const model of \[\]\)/, "API 키로 Interactions API를 호출하지 않아야 함");
 assert.match(appScript, /background:true, store:true/);
 assert.match(appScript, /old\.url === url && Date\.now\(\) - \(old\.at \|\| 0\) < 24 \* 60 \* 60 \* 1000/);
 assert.match(appScript, /generateContent/, "구형 계정용 예비 경로 유지");
@@ -410,14 +411,14 @@ assert.match(appScript, /findExistingBloggerPost/, "같은 영상 중복 발행 
 assert.match(appScript, /scope:"https:\/\/www\.googleapis\.com\/auth\/blogger"/);
 assert.doesNotMatch(appScript, /youtube\.force-ssl/);
 
-assert.match(html, /<meta name="qa-plus-app-version" content="24">/);
-assert.match(html, /id="appVersion"[^>]*>APP v24<\/span>/);
-assert.equal(extractConst(appScript, "APP_VERSION").replace(/"/g, ""), "24");
+assert.match(html, /<meta name="qa-plus-app-version" content="26">/);
+assert.match(html, /id="appVersion"[^>]*>APP v26<\/span>/);
+assert.equal(extractConst(appScript, "APP_VERSION").replace(/"/g, ""), "26");
 assert.match(appScript, /serviceWorker\.register\("\.\/sw\.js\?v=" \+ APP_VERSION, \{scope:"\.\/", updateViaCache:"none"\}\)/);
 assert.match(appScript, /new URL\("\.\/reset\.html", window\.location\.href\)/);
-assert.match(swSource, /const CACHE_NAME = "qaplus-blog-studio-v24"/);
-assert.doesNotMatch(swSource, /qaplus-blog-studio-v23/);
-assert.match(resetSource, /const FALLBACK_VERSION = "24"/);
+assert.match(swSource, /const CACHE_NAME = "qaplus-blog-studio-v26"/);
+assert.doesNotMatch(swSource, /qaplus-blog-studio-v25/);
+assert.match(resetSource, /const FALLBACK_VERSION = "26"/);
 assert.match(resetSource, /key\.startsWith\("qaplus-blog-studio-"\)/);
 
 // CSP 는 파이프라인이 실제로 부르는 호스트를 모두 허용해야 합니다.
