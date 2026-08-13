@@ -409,17 +409,19 @@ assert.match(appScript, /function createBloggerPostPayload\(title, content, labe
 assert.match(appScript, /posts\?isDraft=" \+ isDraft/);
 assert.match(appScript, /if \(!response\.ok \|\| !data\.id\)/);
 assert.match(appScript, /findExistingBloggerPost/, "같은 영상 중복 발행 방지");
-assert.match(appScript, /scope:"https:\/\/www\.googleapis\.com\/auth\/blogger"/);
+assert.match(appScript, /scope:"https:\/\/www\.googleapis\.com\/auth\/blogger https:\/\/www\.googleapis\.com\/auth\/youtube\.readonly"/);
+assert.doesNotMatch(appScript, /youtube\/v3\/search\?key=/, "내 영상 목록은 거부된 API 키를 사용하지 않아야 함");
+assert.match(appScript, /youtube\/v3\/search\?channelId=.*Authorization:"Bearer " \+ gToken/s, "내 영상 목록은 Google OAuth 토큰을 사용해야 함");
 assert.doesNotMatch(appScript, /youtube\.force-ssl/);
 
-assert.match(html, /<meta name="qa-plus-app-version" content="27">/);
-assert.match(html, /id="appVersion"[^>]*>APP v27<\/span>/);
-assert.equal(extractConst(appScript, "APP_VERSION").replace(/"/g, ""), "27");
+assert.match(html, /<meta name="qa-plus-app-version" content="28">/);
+assert.match(html, /id="appVersion"[^>]*>APP v28<\/span>/);
+assert.equal(extractConst(appScript, "APP_VERSION").replace(/"/g, ""), "28");
 assert.match(appScript, /serviceWorker\.register\("\.\/sw\.js\?v=" \+ APP_VERSION, \{scope:"\.\/", updateViaCache:"none"\}\)/);
 assert.match(appScript, /new URL\("\.\/reset\.html", window\.location\.href\)/);
-assert.match(swSource, /const CACHE_NAME = "qaplus-blog-studio-v27"/);
-assert.doesNotMatch(swSource, /qaplus-blog-studio-v26/);
-assert.match(resetSource, /const FALLBACK_VERSION = "27"/);
+assert.match(swSource, /const CACHE_NAME = "qaplus-blog-studio-v28"/);
+assert.doesNotMatch(swSource, /qaplus-blog-studio-v27/);
+assert.match(resetSource, /const FALLBACK_VERSION = "28"/);
 assert.match(resetSource, /key\.startsWith\("qaplus-blog-studio-"\)/);
 
 // CSP 는 파이프라인이 실제로 부르는 호스트를 모두 허용해야 합니다.

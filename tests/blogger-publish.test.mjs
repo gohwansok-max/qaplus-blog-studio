@@ -166,6 +166,6 @@ assert.match(appScript, /if \(e\?\.status === 401 \|\| e\?\.status === 403\) \{\
 assert.match(appScript, /history\[videoId\] = \{id:data\.id/);
 assert.match(appScript, /localStorage\.setItem\(HISTORY_KEY, JSON\.stringify\(history\)\)/);
 // Blogger 권한만 요청합니다.
-assert.match(appScript, /scope:"https:\/\/www\.googleapis\.com\/auth\/blogger"/);
+assert.match(appScript, /scope:"https:\/\/www\.googleapis\.com\/auth\/blogger https:\/\/www\.googleapis\.com\/auth\/youtube\.readonly"/);
 
 console.log("blogger-publish tests: PASS");
