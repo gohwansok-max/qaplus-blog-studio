@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#0b1f33">
   <meta name="application-name" content="QA PLUS Blog Studio">
-  <meta name="qa-plus-app-version" content="26">
+  <meta name="qa-plus-app-version" content="27">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="QA+ Studio">
@@ -267,7 +267,7 @@
         <span class="brand-mark">QA+</span>
         <span class="brand-copy"><strong>QA PLUS Blog Studio</strong><span>FOOD SAFETY CONTENT AUTOMATION</span></span>
       </a>
-      <span id="appVersion" class="app-version" aria-label="현재 앱 버전">APP v26</span>
+      <span id="appVersion" class="app-version" aria-label="현재 앱 버전">APP v27</span>
       <div class="studio-nav" role="tablist" aria-label="앱 화면">
         <button class="studio-tab active" type="button" data-app-view="make" role="tab" aria-selected="true">글 만들기</button>
         <button class="studio-tab" type="button" data-app-view="tools" role="tab" aria-selected="false">블로그 도구</button>
@@ -865,7 +865,7 @@
    글쓰기: 칩섭(OpenAI 호환 chat/completions, 스트리밍)
    대본: 제미나이  ·  이미지: 칩섭/OpenAI  ·  보관: 워커 KV 또는 GitHub
    ========================================================== */
-    const APP_VERSION = "26";
+    const APP_VERSION = "27";
     const BLOG_URL = "https://qaplus-haccp.blogspot.com/";
     const YOUTUBE_CHANNEL = "https://youtube.com/@qaplus_haccp?si=2eoN3yuYCoDBpLru";
     const YOUTUBE_HANDLE = "@qaplus_haccp";
@@ -1875,7 +1875,10 @@ ${IMG_NEGATIVE}
       const models = [first, ...GM_MODELS.filter((m) => m !== first)];
       const errs = [];
 
-      const old = safeJsonParse(localStorage.getItem(GM_JOB_KEY) || "null", null);
+      /* v26 and earlier may have saved an Interactions job id. Polling that
+         endpoint with a browser API key always fails, so discard it. */
+      localStorage.removeItem(GM_JOB_KEY);
+      const old = null;
       if (old?.id && old.url === url && Date.now() - (old.at || 0) < 24 * 60 * 60 * 1000) {
         if (onProgress) onProgress("중단된 " + old.model + " 작업 이어받는 중…");
         return await waitGeminiJob(old.id, old.model, onProgress);
