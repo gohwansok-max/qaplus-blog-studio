@@ -6,3 +6,18 @@ workers_dev = true
 [[kv_namespaces]]
 binding = "BLOG_IMAGES"
 id = "c8b59db591e545049c2b1401a691d592"
+
+# 브라우저와 독립된 콘텐츠 생성 작업 상태 (배포 전 실제 namespace ID로 교체)
+[[kv_namespaces]]
+binding = "BLOG_JOBS"
+id = "2dc5672bb8ae4659aff0c8d6a9b7cd09"
+
+# 각 생성 단계를 저장하고 실패 지점부터 재시도하는 내구형 작업 엔진
+[[workflows]]
+name = "qa-plus-blog-generation"
+binding = "BLOG_WORKFLOW"
+class_name = "BlogGenerationWorkflow"
+
+[observability]
+enabled = true
+head_sampling_rate = 1

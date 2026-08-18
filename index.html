@@ -484,10 +484,11 @@
           <section class="side-card">
             <h2>연결 상태</h2>
             <div class="connection">
-              <div class="connection-row"><span>API 다리(프록시)</span><span id="stProxy" class="badge">미설정</span></div>
-              <div class="connection-row"><span>칩섭 글쓰기</span><span id="stCsk" class="badge">미설정</span></div>
-              <div class="connection-row"><span>제미나이 대본</span><span id="stGm" class="badge">미설정</span></div>
-              <div class="connection-row"><span>이미지 생성</span><span id="stImg" class="badge">미설정</span></div>
+              <div class="connection-row"><span>서버 작업실</span><span id="stServer" class="badge">접근 키 필요</span></div>
+              <div class="connection-row"><span>API 다리(기존 직접 연결)</span><span id="stProxy" class="badge">미설정</span></div>
+              <div class="connection-row"><span>칩섭 글쓰기(기존 직접 연결)</span><span id="stCsk" class="badge">미설정</span></div>
+              <div class="connection-row"><span>제미나이 대본(기존 직접 연결)</span><span id="stGm" class="badge">미설정</span></div>
+              <div class="connection-row"><span>이미지 생성(기존 직접 연결)</span><span id="stImg" class="badge">미설정</span></div>
               <div class="connection-row"><span>Google Blogger</span><span id="stGoogle" class="badge">연결 안 됨</span></div>
             </div>
             <button id="openSettingsFromSidebar" class="btn btn-secondary btn-small btn-wide" type="button" style="margin-top:13px">설정·연결 검증 열기</button>
@@ -600,7 +601,22 @@
 
           <article class="settings-card">
             <div class="settings-section-head">
-              <div><h3>1. 칩섭(CheapSub) — 글쓰기</h3><p>설계·집필·보강 3단계를 모두 같은 방식으로 호출합니다.</p></div>
+              <div><h3>1. 서버 작업실 — 브라우저 없이 계속 실행</h3><p>글 생성은 서버가 맡고, 이 화면은 진행 상황만 확인합니다.</p></div>
+              <span id="stServer2" class="badge">확인 전</span>
+            </div>
+            <div class="settings-fields">
+              <div class="field">
+                <label for="serverKey">서버 작업실 접근 키 <span class="saved" id="sv-serverKey">저장됨</span></label>
+                <input id="serverKey" name="qaplus_server_access_key" type="password" placeholder="배포 후 설정할 작업실 접근 키" autocomplete="off" autocapitalize="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true">
+                <p class="hint">AI API 키가 아닙니다. 내 서버 작업을 보호하는 전용 키입니다.</p>
+              </div>
+            </div>
+            <div id="serverOut"></div>
+          </article>
+
+          <article class="settings-card">
+            <div class="settings-section-head">
+              <div><h3>2. 칩섭(CheapSub) — 기존 직접 연결 점검용</h3><p>설계·집필·보강 3단계를 모두 같은 방식으로 호출합니다.</p></div>
               <span id="stCsk2" class="badge">확인 전</span>
             </div>
             <div class="settings-fields">
@@ -632,7 +648,7 @@
                 </select>
                 <p class="hint">공급자 장애로 이 모델이 막히면(<code>fixed_merchant_unavailable</code>) 같은 계열의 다음 모델로 자동 전환하고 결과 화면에 알려 드립니다.</p>
               </div>
-              <p class="security-note">개인 전용 앱이라 기본 키·설정은 코드에 고정되어 있습니다. 브라우저 저장소에도 같이 보관되며, 공용 PC에서는 사용하지 마세요.</p>
+              <p class="security-note">글 생성용 API 키는 서버에만 보관합니다. 아래 ‘서버 작업실 접근 키’는 이 앱에서 서버 작업을 시작할 때만 쓰므로 공용 PC에는 저장하지 마세요.</p>
             </div>
             <div class="settings-actions">
               <button id="testBtn" class="btn btn-primary btn-small" type="button">연결 확인</button>
@@ -643,7 +659,7 @@
 
           <article class="settings-card">
             <div class="settings-section-head">
-              <div><h3>2. 제미나이 — 영상 대본 자동 추출</h3><p>유튜브 주소만 주면 영상을 직접 보고 받아씁니다.</p></div>
+              <div><h3>3. 제미나이 — 기존 직접 연결 점검용</h3><p>유튜브 주소만 주면 영상을 직접 보고 받아씁니다.</p></div>
               <span id="stGm2" class="badge">확인 전</span>
             </div>
             <div class="settings-fields">
@@ -671,7 +687,7 @@
 
           <article class="settings-card">
             <div class="settings-section-head">
-              <div><h3>3. 이미지 생성</h3><p>QA PLUS 중계로 먼저 시도하고, 안 되면 OpenAI로 넘어갑니다.</p></div>
+              <div><h3>4. 이미지 생성</h3><p>QA PLUS 중계로 먼저 시도하고, 안 되면 OpenAI로 넘어갑니다.</p></div>
               <span id="stImg2" class="badge">확인 전</span>
             </div>
             <div class="settings-fields">
@@ -729,7 +745,7 @@
 
           <article class="settings-card">
             <div class="settings-section-head">
-              <div><h3>4. 이미지 보관 위치</h3><p>만든 그림을 어디에 두고 블로그에서 불러올지 정합니다.</p></div>
+              <div><h3>5. 이미지 보관 위치</h3><p>만든 그림을 어디에 두고 블로그에서 불러올지 정합니다.</p></div>
               <span id="stGh2" class="badge">확인 전</span>
             </div>
             <div class="settings-fields">
@@ -759,7 +775,7 @@
 
           <article class="settings-card">
             <div class="settings-section-head">
-              <div><h3>5. Blogger 발행</h3><p>글 발행에만 Google 로그인을 씁니다. AI 생성에는 쓰지 않습니다.</p></div>
+              <div><h3>6. Blogger 발행</h3><p>글 발행에만 Google 로그인을 씁니다. AI 생성에는 쓰지 않습니다.</p></div>
               <span id="stGoogle2" class="badge">연결 안 됨</span>
             </div>
             <div class="settings-fields">
@@ -872,9 +888,10 @@
     const DRIVE_URL = "https://drive.google.com/drive/folders/1tHqeagzD__Oqjc027TVJhcWQC0JkOIV6?usp=sharing";
     const DEFAULT_PROXY = "https://qa-plus-api.gohwansok.workers.dev";
     const DEFAULT_CLIENT_ID = "359001642002-d4r6rga5rs7jc0n19c10o6gd77n854ga.apps.googleusercontent.com";
-    // 개인 전용 고정값 — 설정 탭을 매번 채우지 않도록 코드에 박아 둡니다.
-    const BAKED_CSK = "csk_mlagc9XjVZMCD96GAh8WBl_i9Q1OgpxN";
-    const BAKED_GEMINI = "AQ.Ab8RN6K_wupgLFqhiXh2LqPD10fXqUT1v2cnjMfpbCGfX7uulw";
+    // AI 서비스 키는 서버 작업실의 비공개 Secret에만 둡니다.
+    // 브라우저에는 작업실 접근 키만 저장하며, 이 키는 AI 제공사 키가 아닙니다.
+    const BAKED_CSK = "";
+    const BAKED_GEMINI = "";
     const BAKED_OWNER_NAME = "고환석";
     const BAKED_OWNER_MAIL = "gohwansok@gmail.com";
     const BAKED_OWNER_INTRO = "20년간 식품 품질관리·HACCP 컨설팅을 해 왔습니다. 현장에서 바로 쓰는 실무 기준을 정리합니다.";
@@ -904,9 +921,10 @@
     const KEY = "qaplus.studio.v1";
     const ECONNYAM_BLOG_KEY = "econnyam.studio.v8";
     const ECONNYAM_STUDIO_KEY = "econnyam_settings_v2";
-    const FIELDS = ["proxy","csk","base","m1","m2","gmKey","gmModel","imgRoute","imgStyle","imgQuality","oaKey","imgModel","ghToken","ghRepo","ghBranch","clientId","blogId","ytKey","channelId","len","imgCount","category","ownerName","ownerMail","blogUrl","ownerIntro"];
+    const FIELDS = ["proxy","serverKey","csk","base","m1","m2","gmKey","gmModel","imgRoute","imgStyle","imgQuality","oaKey","imgModel","ghToken","ghRepo","ghBranch","clientId","blogId","ytKey","channelId","len","imgCount","category","ownerName","ownerMail","blogUrl","ownerIntro"];
     const DEFAULTS = {
       proxy: DEFAULT_PROXY,
+      serverKey: "",
       csk: BAKED_CSK,
       base: "https://api.cheapai.im/v1",
       m1: "gpt-5.6-sol",
@@ -937,6 +955,7 @@
 
     function hardenCfg(src) {
       const next = {...DEFAULTS, ...(src || {})};
+      if (!next.serverKey) next.serverKey = "";
       if (!next.csk || !String(next.csk).startsWith("csk_")) next.csk = BAKED_CSK;
       if (!next.gmKey) next.gmKey = BAKED_GEMINI;
       if (!next.ytKey) next.ytKey = BAKED_GEMINI;
@@ -2017,13 +2036,153 @@ ${IMG_NEGATIVE}
       } catch (_) {}
     }
 
+    /* ---------- 서버 작업실: 브라우저는 등록·상태 조회·결과 표시만 담당 ---------- */
+    const SERVER_JOB_KEY = KEY + ".server-job";
+    let _serverPollTimer = null;
+
+    function serverJobHeaders(jobKey = "") {
+      const headers = {"X-QA-PLUS-ACCESS-KEY":String(cfg.serverKey || "").trim()};
+      if (jobKey) headers["X-QA-PLUS-JOB-KEY"] = jobKey;
+      return headers;
+    }
+    function saveServerJob(handle) {
+      try { localStorage.setItem(SERVER_JOB_KEY, JSON.stringify({...handle, at:Date.now()})); } catch (_) {}
+    }
+    function loadServerJob() { return safeJsonParse(localStorage.getItem(SERVER_JOB_KEY) || "null", null); }
+    function clearServerJob() {
+      clearTimeout(_serverPollTimer);
+      _serverPollTimer = null;
+      try { localStorage.removeItem(SERVER_JOB_KEY); } catch (_) {}
+    }
+    function setServerProgress(job) {
+      const stage = Math.max(0, Math.min(5, Number(job?.stage) || 0));
+      for (let i = 1; i <= 5; i += 1) {
+        if (job.status === "completed") setStep(i, "done", i === 5 ? "서버 작업 완료" : "서버 완료");
+        else if (i < stage) setStep(i, "done", "서버 저장 완료");
+        else if (i === stage) setStep(i, "run", job.message || "서버에서 처리 중…");
+      }
+      if (job.status === "queued") setBadge($("#pipelineOverall"), "서버 대기열", "warn");
+      else if (job.status === "running") setBadge($("#pipelineOverall"), "서버에서 생성 중", "warn");
+      else if (job.status === "completed") setBadge($("#pipelineOverall"), "서버 작업 완료", "ok");
+      else if (job.status === "failed") setBadge($("#pipelineOverall"), "서버 작업 확인 필요", "warn");
+    }
+    function applyServerJobResult(job) {
+      if (!job?.result?.html) throw new Error("서버 작업 결과 본문을 찾지 못했습니다.");
+      const input = job.input || lastInput || validateInput();
+      lastInput = input;
+      article = {
+        html:"", title:job.result.title || input.topic || "QA PLUS", desc:job.result.desc || "",
+        labels:Array.isArray(job.result.labels) ? job.result.labels : [input.category],
+        keywords:Array.isArray(job.result.keywords) ? job.result.keywords : [],
+        images:Array.isArray(job.result.images) ? job.result.images : [],
+        videoId:job.result.videoId || input.videoId || "", postUrl:""
+      };
+      let html = ensureRequiredBlocks(job.result.html, input);
+      html = insertImages(html, article.images);
+      article.html = sanitizePostHtml(styleForBlogger(html));
+      renderResult(input);
+      saveDraft();
+      localStorage.removeItem(PIPE_KEY);
+      setStep(6, "idle", "발행 대기");
+      showNotice("서버 작업이 완료됐습니다. 검토 후 Blogger로 보내 주세요.", "success");
+      toast("서버에서 글을 완성했어요");
+    }
+    async function fetchServerJob(handle) {
+      const response = await fetch(px() + "/jobs/" + encodeURIComponent(handle.id), {headers:serverJobHeaders(handle.jobKey)});
+      const data = safeJsonParse(await response.text(), {});
+      if (!response.ok) throw new Error(data?.error?.message || ("서버 작업 상태 확인 실패 " + response.status));
+      return data.job;
+    }
+    async function pollServerJob(handle, immediate = false) {
+      clearTimeout(_serverPollTimer);
+      try {
+        const job = await fetchServerJob(handle);
+        setServerProgress(job);
+        if (job.status === "completed") {
+          applyServerJobResult(job);
+          clearServerJob();
+          $("#runBtn").disabled = false;
+          return;
+        }
+        if (job.status === "failed" || job.status === "cancelled") {
+          const stage = Math.max(1, Math.min(5, Number(job.stage) || 1));
+          setStep(stage, "err", String(job.error || job.message || "서버 작업 실패").slice(0, 60));
+          showNotice(job.status === "cancelled" ? "서버 작업을 종료했습니다." : "서버 작업이 중단됐습니다: " + (job.error || job.message || "원인 확인 필요"), job.status === "cancelled" ? "info" : "error");
+          $("#runBtn").disabled = false;
+          return;
+        }
+        const next = document.visibilityState === "visible" ? 3500 : 15000;
+        _serverPollTimer = setTimeout(() => pollServerJob(handle), next);
+      } catch (error) {
+        setBadge($("#pipelineOverall"), "서버 상태 재확인 중", "warn");
+        showNotice("서버 작업은 계속 진행 중일 수 있습니다. 연결이 돌아오면 자동으로 다시 확인합니다.", "info");
+        _serverPollTimer = setTimeout(() => pollServerJob(handle), immediate ? 5000 : 12000);
+      }
+    }
+    async function startServerBlogJob(input) {
+      if (!String(cfg.serverKey || "").trim()) {
+        setAppView("settings");
+        throw new Error("설정 탭에 서버 작업실 접근 키를 넣어 주세요.");
+      }
+      const old = loadServerJob();
+      if (old && !confirm("이전 서버 작업을 종료하고 새 작업을 시작할까요? 이미 생성된 결과는 유지됩니다.")) return;
+      if (old?.id && old?.jobKey) {
+        try {
+          await fetch(px() + "/jobs/" + encodeURIComponent(old.id), {method:"DELETE",headers:serverJobHeaders(old.jobKey)});
+        } catch (_) {}
+      }
+      clearServerJob();
+      _runActive = true;
+      resetSteps();
+      $("#runBtn").disabled = true;
+      setBadge($("#pipelineOverall"), "서버 작업 등록 중", "warn");
+      showNotice("서버 작업실에 맡기고 있습니다. 이 창을 닫거나 다른 업무를 해도 계속 진행됩니다.", "info");
+      const payload = {...input, m1:cfg.m1, m2:cfg.m2, gmModel:cfg.gmModel, imgStyle:cfg.imgStyle, imgQuality:cfg.imgQuality, imgRoute:cfg.imgRoute, imgModel:cfg.imgModel};
+      try {
+        const response = await fetch(px() + "/jobs", {method:"POST",headers:{"Content-Type":"application/json",...serverJobHeaders()},body:JSON.stringify(payload)});
+        const data = safeJsonParse(await response.text(), {});
+        if (!response.ok || !data?.job?.id || !data?.jobKey) throw new Error(data?.error?.message || "서버 작업을 등록하지 못했습니다.");
+        const handle = {id:data.job.id, jobKey:data.jobKey, input, startedAt:Date.now()};
+        saveServerJob(handle);
+        setServerProgress(data.job);
+        pollServerJob(handle, true);
+      } catch (error) {
+        $("#runBtn").disabled = false;
+        setBadge($("#pipelineOverall"), "등록 실패", "warn");
+        showNotice("서버 작업을 시작하지 못했습니다: " + error.message, "error");
+        throw error;
+      } finally {
+        _runActive = false;
+      }
+    }
+    async function resumeServerJob() {
+      const handle = loadServerJob();
+      if (!handle?.id || !handle?.jobKey) return false;
+      if (!String(cfg.serverKey || "").trim()) {
+        setBadge($("#pipelineOverall"), "접근 키 입력 필요", "warn");
+        showNotice("서버 작업 기록을 찾았습니다. 설정 탭에 서버 작업실 접근 키를 넣으면 상태를 자동으로 이어받습니다.", "info");
+        return false;
+      }
+      $("#runBtn").disabled = true;
+      showNotice("서버에서 진행 중인 작업 상태를 이어받는 중입니다.", "info");
+      pollServerJob(handle, true);
+      return true;
+    }
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        const handle = loadServerJob();
+        if (handle) pollServerJob(handle, true);
+      }
+    });
+
     /* ---------- 본문 실행 ---------- */
     $("#runBtn").onclick = async () => {
       save(); saveWork();
       let input;
       try { input = validateInput(); } catch (e) { showNotice(e.message, "error"); return toast(e.message); }
-      if (!cfg.csk) { toast("먼저 칩섭 API 키를 넣어 주세요."); setAppView("settings"); return; }
       lastInput = input;
+      try { await startServerBlogJob(input); } catch (error) { toast(error.message, 6000); }
+      return;
 
       _runActive = true;
       await holdScreen();
@@ -2708,6 +2867,9 @@ ${IMG_NEGATIVE}
 
     /* ---------- 준비 상태 체크리스트 ---------- */
     function drawCheck() {
+      const serverReady = Boolean(cfg.proxy && cfg.serverKey);
+      setBadge($("#stServer"), serverReady ? "준비됨" : "접근 키 필요", serverReady ? "ok" : "warn");
+      setBadge($("#stServer2"), serverReady ? "준비됨" : "키 입력 필요", serverReady ? "ok" : "warn");
       setBadge($("#stProxy"), cfg.proxy ? "설정됨" : "미설정", cfg.proxy ? "ok" : "");
       setBadge($("#stCsk"), cfg.csk ? "설정됨" : "미설정", cfg.csk ? "ok" : "");
       setBadge($("#stGm"), cfg.gmKey ? "설정됨" : "미설정", cfg.gmKey ? "ok" : "");
@@ -2715,10 +2877,11 @@ ${IMG_NEGATIVE}
       if (!gToken) setBadge($("#stGoogle"), "연결 안 됨", "");
       const el = $("#chkList"); if (!el) return;
       const rows = [
-        [Boolean(cfg.proxy), "API 다리(프록시)", "이게 없으면 칩섭·OpenAI 호출이 모두 실패합니다"],
-        [Boolean(cfg.csk), "글쓰기 API 연결", "칩섭 키가 있어야 설계·집필·보강이 됩니다"],
-        [Boolean(cfg.gmKey), "대본 자동 추출", "제미나이가 영상을 보고 받아써야 내용이 정확합니다"],
-        [Boolean(cfg.csk || cfg.oaKey), "이미지 생성 준비", "글마다 실사 이미지가 들어가면 검색에 유리합니다"],
+        [Boolean(cfg.proxy && cfg.serverKey), "서버 작업실", "서버가 탭과 무관하게 생성·재시도·결과 보존을 수행합니다"],
+        [Boolean(cfg.proxy), "API 다리(프록시)", "서버 작업실과 기존 직접 연결의 통로입니다"],
+        [Boolean(cfg.csk), "기존 직접 글쓰기 설정", "새 글 생성은 서버 Secret을 사용하며 이 항목은 기존 연결 점검용입니다"],
+        [Boolean(cfg.gmKey), "기존 직접 대본 설정", "새 글 생성의 대본 추출은 서버 Secret을 사용합니다"],
+        [Boolean(cfg.csk || cfg.oaKey), "기존 직접 이미지 설정", "새 글 생성의 이미지는 서버에서 영구 보관합니다"],
         [Boolean(cfg.ghToken && cfg.ghRepo), "이미지 보관 위치(선택)", "OpenAI 직접 경로로 받은 이미지를 GitHub에 올립니다"],
         [Boolean(cfg.clientId), "Blogger 연결", "OAuth 클라이언트 ID가 있어야 임시저장·발행이 됩니다"],
         [Boolean(cfg.ytKey), "유튜브 영상 목록(선택)", "‘내 영상’ 버튼으로 영상을 고를 수 있습니다"],
@@ -2892,14 +3055,19 @@ ${IMG_NEGATIVE}
       localStorage.removeItem(WORK_KEY);
       localStorage.removeItem(PIPE_KEY);
       resetSteps();
-      showNotice("입력 내용과 저장된 중간 결과를 지웠습니다.", "info");
+      showNotice("입력 내용과 저장된 중간 결과를 지웠습니다. 진행 중인 서버 작업은 결과를 보존하기 위해 계속됩니다.", "info");
     };
-    $("#resetPipe").onclick = () => {
+    $("#resetPipe").onclick = async () => {
+      const handle = loadServerJob();
+      if (handle?.id && handle?.jobKey && confirm("진행 중인 서버 작업도 종료할까요?")) {
+        try { await fetch(px() + "/jobs/" + encodeURIComponent(handle.id), {method:"DELETE",headers:serverJobHeaders(handle.jobKey)}); } catch (_) {}
+        clearServerJob();
+      }
       localStorage.removeItem(PIPE_KEY);
       localStorage.removeItem(GM_JOB_KEY);
       resetSteps();
       setBadge($("#pipelineOverall"), "대기");
-      showNotice("저장된 진행 상태를 버렸습니다. 다음 실행은 1단계부터 시작합니다.", "info");
+      showNotice("이 기기의 진행 기록을 초기화했습니다.", "info");
     };
 
     $("#applyHtml").onclick = () => {
@@ -2986,6 +3154,7 @@ ${IMG_NEGATIVE}
       localStorage.removeItem(WORK_KEY);
       localStorage.removeItem(PIPE_KEY);
       localStorage.removeItem(DRAFT_KEY);
+      clearServerJob();
       idbSet(null);
       cfg = {...DEFAULTS};
       FIELDS.forEach((k) => { const el = $("#" + k); if (el) el.value = DEFAULTS[k] || ""; });
@@ -3009,6 +3178,7 @@ ${IMG_NEGATIVE}
       }
       if (!cfg.csk) await importEconnyamSettings(false);
       if (had) toast("저장된 설정을 불러왔어요");
+      await resumeServerJob();
 
       const d = safeJsonParse(localStorage.getItem(DRAFT_KEY) || "null", null);
       if (d?.html) {

@@ -7,7 +7,10 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(here,"..");
 const workerSource = fs.readFileSync(path.join(root,"qa-plus-api-worker.js"),"utf8");
 const wranglerSource = fs.readFileSync(path.join(root,"wrangler.toml"),"utf8");
-const workerModuleUrl = "data:text/javascript;base64," + Buffer.from(workerSource).toString("base64");
+const executableWorkerSource = workerSource
+  .replace('import { WorkflowEntrypoint } from "cloudflare:workers";', 'class WorkflowEntrypoint { constructor(env) { this.env = env; } }')
+  .replace('import { NonRetryableError } from "cloudflare:workflows";', 'class NonRetryableError extends Error {}');
+const workerModuleUrl = "data:text/javascript;base64," + Buffer.from(executableWorkerSource).toString("base64");
 const worker = (await import(workerModuleUrl)).default;
 
 function createKvMock() {
