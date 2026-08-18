@@ -65,8 +65,8 @@ const FORWARDED_HEADERS = [
 function corsHeaders(origin) {
   return {
     "Access-Control-Allow-Origin": origin,
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "authorization, x-api-key, anthropic-version, anthropic-beta, content-type, accept",
+    "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "authorization, x-api-key, x-qa-plus-access-key, x-qa-plus-job-key, anthropic-version, anthropic-beta, content-type, accept",
     "Access-Control-Max-Age": "86400",
     "Vary": "Origin"
   };

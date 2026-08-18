@@ -89,6 +89,15 @@ const unauthorized = await worker.fetch(request("/jobs", "POST", {
 }, JSON.stringify({topic: "테스트", script: "x".repeat(150)})), env);
 assert.equal(unauthorized.status, 401, "작업실 접근 키가 다르면 생성할 수 없습니다");
 
+const preflight = await worker.fetch(request("/jobs", "OPTIONS", {
+  "Access-Control-Request-Method": "POST",
+  "Access-Control-Request-Headers": "content-type,x-qa-plus-access-key"
+}), env);
+assert.equal(preflight.status, 204, "브라우저의 서버 작업 CORS 사전 요청을 허용해야 합니다");
+assert.match(preflight.headers.get("Access-Control-Allow-Headers") || "", /x-qa-plus-access-key/);
+assert.match(preflight.headers.get("Access-Control-Allow-Headers") || "", /x-qa-plus-job-key/);
+assert.match(preflight.headers.get("Access-Control-Allow-Methods") || "", /DELETE/);
+
 assert.match(workerSource, /class BlogGenerationWorkflow extends WorkflowEntrypoint/);
 assert.match(workerSource, /retries: \{limit: 6, delay: "10 seconds", backoff: "exponential"\}/);
 assert.match(workerSource, /JOB_TTL_SECONDS = 60 \* 60 \* 24 \* 14/);
