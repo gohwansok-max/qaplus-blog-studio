@@ -414,14 +414,14 @@ assert.doesNotMatch(appScript, /youtube\/v3\/search\?key=/, "내 영상 목록�
 assert.match(appScript, /youtube\/v3\/search\?channelId=.*Authorization:"Bearer " \+ gToken/s, "내 영상 목록은 Google OAuth 토큰을 사용해야 함");
 assert.doesNotMatch(appScript, /youtube\.force-ssl/);
 
-assert.match(html, /<meta name="qa-plus-app-version" content="29">/);
-assert.match(html, /id="appVersion"[^>]*>APP v29<\/span>/);
-assert.equal(extractConst(appScript, "APP_VERSION").replace(/"/g, ""), "29");
+assert.match(html, /<meta name="qa-plus-app-version" content="30">/);
+assert.match(html, /id="appVersion"[^>]*>APP v30<\/span>/);
+assert.equal(extractConst(appScript, "APP_VERSION").replace(/"/g, ""), "30");
 assert.match(appScript, /serviceWorker\.register\("\.\/sw\.js\?v=" \+ APP_VERSION, \{scope:"\.\/", updateViaCache:"none"\}\)/);
 assert.match(appScript, /new URL\("\.\/reset\.html", window\.location\.href\)/);
-assert.match(swSource, /const CACHE_NAME = "qaplus-blog-studio-v29"/);
-assert.doesNotMatch(swSource, /qaplus-blog-studio-v28/);
-assert.match(resetSource, /const FALLBACK_VERSION = "29"/);
+assert.match(swSource, /const CACHE_NAME = "qaplus-blog-studio-v30"/);
+assert.doesNotMatch(swSource, /qaplus-blog-studio-v29/);
+assert.match(resetSource, /const FALLBACK_VERSION = "30"/);
 assert.match(resetSource, /key\.startsWith\("qaplus-blog-studio-"\)/);
 
 // CSP 는 파이프라인이 실제로 부르는 호스트를 모두 허용해야 합니다.

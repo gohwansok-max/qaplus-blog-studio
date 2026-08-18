@@ -110,6 +110,13 @@ assert.match(appSource, /const SERVER_JOB_KEY = KEY \+ "\.server-job"/);
 assert.match(appSource, /async function startServerBlogJob\(input\)/);
 assert.match(appSource, /async function resumeServerJob\(\)/);
 assert.match(appSource, /applyServerJobResult\(job\)/);
+assert.match(appSource, /const SERVER_KEY_VAULT = KEY \+ "\.server-key-vault\.v1"/);
+assert.match(appSource, /function persistServerKey\(value, announce = false\)/);
+assert.match(appSource, /localStorage\.setItem\(SERVER_KEY_VAULT, key\)/);
+assert.match(appSource, /idbVaultSet\(key\)/);
+assert.match(appSource, /async function recoverServerKey\(\)/);
+assert.match(appSource, /await recoverServerKey\(\)/);
+assert.match(appSource, /window\.addEventListener\("pagehide", \(\) => persistServerKey/);
 assert.match(appSource, /document\.addEventListener\("visibilitychange"/);
 
 console.log("background workflow tests: PASS");

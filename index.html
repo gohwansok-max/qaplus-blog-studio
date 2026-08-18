@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#0b1f33">
   <meta name="application-name" content="QA PLUS Blog Studio">
-  <meta name="qa-plus-app-version" content="29">
+  <meta name="qa-plus-app-version" content="30">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="QA+ Studio">
@@ -267,7 +267,7 @@
         <span class="brand-mark">QA+</span>
         <span class="brand-copy"><strong>QA PLUS Blog Studio</strong><span>FOOD SAFETY CONTENT AUTOMATION</span></span>
       </a>
-      <span id="appVersion" class="app-version" aria-label="현재 앱 버전">APP v29</span>
+      <span id="appVersion" class="app-version" aria-label="현재 앱 버전">APP v30</span>
       <div class="studio-nav" role="tablist" aria-label="앱 화면">
         <button class="studio-tab active" type="button" data-app-view="make" role="tab" aria-selected="true">글 만들기</button>
         <button class="studio-tab" type="button" data-app-view="tools" role="tab" aria-selected="false">블로그 도구</button>
@@ -608,7 +608,7 @@
               <div class="field">
                 <label for="serverKey">서버 작업실 접근 키 <span class="saved" id="sv-serverKey">저장됨</span></label>
                 <input id="serverKey" name="qaplus_server_access_key" type="password" placeholder="배포 후 설정할 작업실 접근 키" autocomplete="off" autocapitalize="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true">
-                <p class="hint">AI API 키가 아닙니다. 내 서버 작업을 보호하는 전용 키입니다.</p>
+                <p class="hint">AI API 키가 아닙니다. 이 기기의 LocalStorage와 IndexedDB에 즉시 이중 저장되어, ‘전체 지우기’ 또는 브라우저 데이터 삭제 전까지 다시 입력할 필요가 없습니다.</p>
               </div>
             </div>
             <div id="serverOut"></div>
@@ -881,7 +881,7 @@
    글쓰기: 칩섭(OpenAI 호환 chat/completions, 스트리밍)
    대본: 제미나이  ·  이미지: 칩섭/OpenAI  ·  보관: 워커 KV 또는 GitHub
    ========================================================== */
-    const APP_VERSION = "29";
+    const APP_VERSION = "30";
     const BLOG_URL = "https://qaplus-haccp.blogspot.com/";
     const YOUTUBE_CHANNEL = "https://youtube.com/@qaplus_haccp?si=2eoN3yuYCoDBpLru";
     const YOUTUBE_HANDLE = "@qaplus_haccp";
@@ -919,6 +919,9 @@
 
     /* ---------- 설정 저장 (localStorage + IndexedDB) ---------- */
     const KEY = "qaplus.studio.v1";
+    // 서버 작업실 접근 키는 일반 설정과 분리해 즉시·중복 저장합니다.
+    // 공개 소스에는 절대 포함하지 않고, 사용자의 현재 브라우저 프로필에만 보관합니다.
+    const SERVER_KEY_VAULT = KEY + ".server-key-vault.v1";
     const ECONNYAM_BLOG_KEY = "econnyam.studio.v8";
     const ECONNYAM_STUDIO_KEY = "econnyam_settings_v2";
     const FIELDS = ["proxy","serverKey","csk","base","m1","m2","gmKey","gmModel","imgRoute","imgStyle","imgQuality","oaKey","imgModel","ghToken","ghRepo","ghBranch","clientId","blogId","ytKey","channelId","len","imgCount","category","ownerName","ownerMail","blogUrl","ownerIntro"];
@@ -1004,9 +1007,50 @@
         });
       } catch (_) { return null; }
     }
+    async function idbVaultSet(value) {
+      try { const db = await idb(); if (db) db.transaction("kv","readwrite").objectStore("kv").put(value, SERVER_KEY_VAULT); } catch (_) {}
+    }
+    async function idbVaultGet() {
+      try {
+        const db = await idb(); if (!db) return "";
+        return await new Promise((r) => {
+          const q = db.transaction("kv").objectStore("kv").get(SERVER_KEY_VAULT);
+          q.onsuccess = () => r(typeof q.result === "string" ? q.result : "");
+          q.onerror = () => r("");
+        });
+      } catch (_) { return ""; }
+    }
+    function normalizeServerKey(value) { return String(value || "").trim().slice(0, 256); }
+    function renderServerKeyVault(message, type = "good") {
+      const el = $("#serverOut");
+      if (el) el.innerHTML = '<div class="note ' + type + '">' + esc(message) + "</div>";
+    }
+    function persistServerKey(value, announce = false) {
+      const key = normalizeServerKey(value);
+      if (!key) return false;
+      cfg.serverKey = key;
+      try { localStorage.setItem(SERVER_KEY_VAULT, key); } catch (_) {}
+      idbVaultSet(key);
+      if (announce) renderServerKeyVault("이 기기에 즉시 저장됐습니다. 다음부터 자동으로 불러옵니다.");
+      return true;
+    }
+    async function recoverServerKey() {
+      let key = normalizeServerKey(cfg.serverKey);
+      if (!key) { try { key = normalizeServerKey(localStorage.getItem(SERVER_KEY_VAULT)); } catch (_) {} }
+      if (!key) key = normalizeServerKey(await idbVaultGet());
+      if (!key) return false;
+      cfg.serverKey = key;
+      const el = $("#serverKey"); if (el) el.value = key;
+      persistServerKey(key);
+      renderServerKeyVault("이 기기에 저장된 접근 키를 자동으로 복구했습니다.");
+      return true;
+    }
 
     function save() {
+      const savedServerKey = normalizeServerKey(cfg.serverKey) || (() => { try { return normalizeServerKey(localStorage.getItem(SERVER_KEY_VAULT)); } catch (_) { return ""; } })();
       FIELDS.forEach((f) => { const el = $("#" + f); if (el) cfg[f] = el.value.trim(); });
+      if (!cfg.serverKey && savedServerKey) { cfg.serverKey = savedServerKey; const el = $("#serverKey"); if (el) el.value = savedServerKey; }
+      persistServerKey(cfg.serverKey);
       cfg._at = new Date().toISOString();
       try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch (_) {}
       idbSet(cfg);
@@ -1021,6 +1065,7 @@
       try { d = JSON.parse(localStorage.getItem(KEY) || "null"); } catch (_) {}
       if (!d) d = await idbGet();
       cfg = hardenCfg(d);
+      await recoverServerKey();
       try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch (_) {}
       idbSet(cfg);
       FIELDS.forEach((f) => { const el = $("#" + f); if (el && cfg[f] != null && cfg[f] !== "") el.value = cfg[f]; });
@@ -1030,6 +1075,18 @@
       drawCheck();
       return Boolean(d);
     }
+    // 접근 키는 350ms 지연 저장을 기다리지 않습니다. 입력·화면 종료 순간 바로 보관합니다.
+    $("#serverKey")?.addEventListener("input", (event) => persistServerKey(event.target.value, Boolean(event.target.value.trim())));
+    $("#serverKey")?.addEventListener("change", (event) => persistServerKey(event.target.value, Boolean(event.target.value.trim())));
+    window.addEventListener("pagehide", () => persistServerKey($("#serverKey")?.value));
+    window.addEventListener("storage", (event) => {
+      if (event.key !== SERVER_KEY_VAULT || !event.newValue || cfg.serverKey) return;
+      cfg.serverKey = normalizeServerKey(event.newValue);
+      const el = $("#serverKey"); if (el) el.value = cfg.serverKey;
+      persistServerKey(cfg.serverKey);
+      drawCheck();
+    });
+
     let _saveTimer;
     document.addEventListener("input", (e) => {
       if (!FIELDS.includes(e.target.id)) return;
@@ -3154,8 +3211,10 @@ ${IMG_NEGATIVE}
       localStorage.removeItem(WORK_KEY);
       localStorage.removeItem(PIPE_KEY);
       localStorage.removeItem(DRAFT_KEY);
+      localStorage.removeItem(SERVER_KEY_VAULT);
       clearServerJob();
       idbSet(null);
+      idbVaultSet(null);
       cfg = {...DEFAULTS};
       FIELDS.forEach((k) => { const el = $("#" + k); if (el) el.value = DEFAULTS[k] || ""; });
       drawCheck();
