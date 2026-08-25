@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#0b1f33">
   <meta name="application-name" content="QA PLUS Blog Studio">
-  <meta name="qa-plus-app-version" content="31">
+  <meta name="qa-plus-app-version" content="32">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="QA+ Studio">
@@ -267,7 +267,7 @@
         <span class="brand-mark">QA+</span>
         <span class="brand-copy"><strong>QA PLUS Blog Studio</strong><span>FOOD SAFETY CONTENT AUTOMATION</span></span>
       </a>
-      <span id="appVersion" class="app-version" aria-label="현재 앱 버전">APP v31</span>
+      <span id="appVersion" class="app-version" aria-label="현재 앱 버전">APP v32</span>
       <div class="studio-nav" role="tablist" aria-label="앱 화면">
         <button class="studio-tab active" type="button" data-app-view="make" role="tab" aria-selected="true">글 만들기</button>
         <button class="studio-tab" type="button" data-app-view="tools" role="tab" aria-selected="false">블로그 도구</button>
@@ -484,7 +484,7 @@
           <section class="side-card">
             <h2>연결 상태</h2>
             <div class="connection">
-              <div class="connection-row"><span>서버 작업실</span><span id="stServer" class="badge">접근 키 필요</span></div>
+              <div class="connection-row"><span>서버 작업실</span><span id="stServer" class="badge">Google 로그인 필요</span></div>
               <div class="connection-row"><span>API 다리(기존 직접 연결)</span><span id="stProxy" class="badge">미설정</span></div>
               <div class="connection-row"><span>칩섭 글쓰기(기존 직접 연결)</span><span id="stCsk" class="badge">미설정</span></div>
               <div class="connection-row"><span>제미나이 대본(기존 직접 연결)</span><span id="stGm" class="badge">미설정</span></div>
@@ -605,11 +605,8 @@
               <span id="stServer2" class="badge">확인 전</span>
             </div>
             <div class="settings-fields">
-              <div class="field">
-                <label for="serverKey">서버 작업실 접근 키 <span class="saved" id="sv-serverKey">저장됨</span></label>
-                <input id="serverKey" name="qaplus_server_access_key" type="password" placeholder="배포 후 설정할 작업실 접근 키" autocomplete="off" autocapitalize="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true">
-                <p class="hint">AI API 키가 아닙니다. 이 기기의 LocalStorage와 IndexedDB에 즉시 이중 저장되어, ‘전체 지우기’ 또는 브라우저 데이터 삭제 전까지 다시 입력할 필요가 없습니다.</p>
-              </div>
+              <p class="hint">별도 서버 접근 키는 필요하지 않습니다. 처음 글을 만들 때 Google 로그인으로 Blogger 권한을 확인하며, 생성 작업은 그 뒤에도 서버에서 계속 진행됩니다.</p>
+              <p class="hint">이전 버전의 접근 키를 저장한 기기는 호환을 위해 그대로 사용할 수 있지만, 새로 입력할 필요는 없습니다.</p>
             </div>
             <div id="serverOut"></div>
           </article>
@@ -882,7 +879,7 @@
    글쓰기: 칩섭(OpenAI 호환 chat/completions, 스트리밍)
    대본: 제미나이  ·  이미지: 칩섭/OpenAI  ·  보관: 워커 KV 또는 GitHub
    ========================================================== */
-    const APP_VERSION = "31";
+    const APP_VERSION = "32";
     const BLOG_URL = "https://qaplus-haccp.blogspot.com/";
     const YOUTUBE_CHANNEL = "https://youtube.com/@qaplus_haccp?si=2eoN3yuYCoDBpLru";
     const YOUTUBE_HANDLE = "@qaplus_haccp";
@@ -2099,7 +2096,10 @@ ${IMG_NEGATIVE}
     let _serverPollTimer = null;
 
     function serverJobHeaders(jobKey = "") {
-      const headers = {"X-QA-PLUS-ACCESS-KEY":String(cfg.serverKey || "").trim()};
+      const headers = {};
+      if (gToken) headers.Authorization = "Bearer " + gToken;
+      const legacyKey = String(cfg.serverKey || "").trim();
+      if (legacyKey) headers["X-QA-PLUS-ACCESS-KEY"] = legacyKey;
       if (jobKey) headers["X-QA-PLUS-JOB-KEY"] = jobKey;
       return headers;
     }
@@ -2148,7 +2148,11 @@ ${IMG_NEGATIVE}
     async function fetchServerJob(handle) {
       const response = await fetch(px() + "/jobs/" + encodeURIComponent(handle.id), {headers:serverJobHeaders(handle.jobKey)});
       const data = safeJsonParse(await response.text(), {});
-      if (!response.ok) throw new Error(data?.error?.message || ("서버 작업 상태 확인 실패 " + response.status));
+      if (!response.ok) {
+        const error = new Error(data?.error?.message || ("서버 작업 상태 확인 실패 " + response.status));
+        error.status = response.status;
+        throw error;
+      }
       return data.job;
     }
     async function pollServerJob(handle, immediate = false) {
@@ -2172,15 +2176,21 @@ ${IMG_NEGATIVE}
         const next = document.visibilityState === "visible" ? 3500 : 15000;
         _serverPollTimer = setTimeout(() => pollServerJob(handle), next);
       } catch (error) {
+        if (Number(error?.status) === 401) {
+          setBadge($("#pipelineOverall"), "Google 재로그인 필요", "warn");
+          showNotice("진행 중인 서버 작업은 보존되어 있습니다. 설정에서 Google 로그인을 다시 하면 이어서 상태를 확인합니다.", "info");
+          $("#runBtn").disabled = false;
+          return;
+        }
         setBadge($("#pipelineOverall"), "서버 상태 재확인 중", "warn");
         showNotice("서버 작업은 계속 진행 중일 수 있습니다. 연결이 돌아오면 자동으로 다시 확인합니다.", "info");
         _serverPollTimer = setTimeout(() => pollServerJob(handle), immediate ? 5000 : 12000);
       }
     }
     async function startServerBlogJob(input) {
-      if (!String(cfg.serverKey || "").trim()) {
+      if (!gToken && !(await gLogin())) {
         setAppView("settings");
-        throw new Error("설정 탭에 서버 작업실 접근 키를 넣어 주세요.");
+        throw new Error("서버 작업을 시작하려면 Google 로그인과 Blogger 권한 허용이 필요합니다.");
       }
       const old = loadServerJob();
       if (old && !confirm("이전 서버 작업을 종료하고 새 작업을 시작할까요? 이미 생성된 결과는 유지됩니다.")) return;
@@ -2216,9 +2226,9 @@ ${IMG_NEGATIVE}
     async function resumeServerJob() {
       const handle = loadServerJob();
       if (!handle?.id || !handle?.jobKey) return false;
-      if (!String(cfg.serverKey || "").trim()) {
-        setBadge($("#pipelineOverall"), "접근 키 입력 필요", "warn");
-        showNotice("서버 작업 기록을 찾았습니다. 설정 탭에 서버 작업실 접근 키를 넣으면 상태를 자동으로 이어받습니다.", "info");
+      if (!gToken) {
+        setBadge($("#pipelineOverall"), "Google 로그인 필요", "warn");
+        showNotice("서버 작업 기록을 찾았습니다. 설정에서 Google 로그인하면 현재 단계부터 상태를 이어받습니다.", "info");
         return false;
       }
       $("#runBtn").disabled = true;
@@ -2925,9 +2935,10 @@ ${IMG_NEGATIVE}
 
     /* ---------- 준비 상태 체크리스트 ---------- */
     function drawCheck() {
-      const serverReady = Boolean(cfg.proxy && cfg.serverKey);
-      setBadge($("#stServer"), serverReady ? "준비됨" : "접근 키 필요", serverReady ? "ok" : "warn");
-      setBadge($("#stServer2"), serverReady ? "준비됨" : "키 입력 필요", serverReady ? "ok" : "warn");
+      const serverReady = Boolean(cfg.proxy && cfg.clientId);
+      const serverConnected = serverReady && Boolean(gToken);
+      setBadge($("#stServer"), serverConnected ? "연결됨" : (serverReady ? "Google 로그인 필요" : "OAuth 설정 필요"), serverConnected ? "ok" : "warn");
+      setBadge($("#stServer2"), serverConnected ? "연결됨" : (serverReady ? "Google 로그인 필요" : "OAuth 설정 필요"), serverConnected ? "ok" : "warn");
       setBadge($("#stProxy"), cfg.proxy ? "설정됨" : "미설정", cfg.proxy ? "ok" : "");
       setBadge($("#stCsk"), cfg.csk ? "설정됨" : "미설정", cfg.csk ? "ok" : "");
       setBadge($("#stGm"), cfg.gmKey ? "설정됨" : "미설정", cfg.gmKey ? "ok" : "");
@@ -2935,7 +2946,7 @@ ${IMG_NEGATIVE}
       if (!gToken) setBadge($("#stGoogle"), "연결 안 됨", "");
       const el = $("#chkList"); if (!el) return;
       const rows = [
-        [Boolean(cfg.proxy && cfg.serverKey), "서버 작업실", "서버가 탭과 무관하게 생성·재시도·결과 보존을 수행합니다"],
+        [Boolean(cfg.proxy && cfg.clientId), "서버 작업실", "Google 로그인으로 본인 권한을 확인한 뒤 서버가 생성·재시도·결과 보존을 수행합니다"],
         [Boolean(cfg.proxy), "API 다리(프록시)", "서버 작업실과 기존 직접 연결의 통로입니다"],
         [Boolean(cfg.csk), "기존 직접 글쓰기 설정", "새 글 생성은 서버 Secret을 사용하며 이 항목은 기존 연결 점검용입니다"],
         [Boolean(cfg.gmKey), "기존 직접 대본 설정", "새 글 생성의 대본 추출은 서버 Secret을 사용합니다"],
@@ -3163,7 +3174,7 @@ ${IMG_NEGATIVE}
     $("#gmTestBtn").onclick = testGemini;
     $("#imgTestBtn").onclick = testImage;
     $("#ghTestBtn").onclick = testGithub;
-    $("#loginBtn").onclick = async () => { try { if (await gLogin()) { toast("구글 계정을 연결했어요"); await testBlogger(); } } catch (e) { toast(e.message); } };
+    $("#loginBtn").onclick = async () => { try { if (await gLogin()) { toast("구글 계정을 연결했어요"); await testBlogger(); await resumeServerJob(); } } catch (e) { toast(e.message); } };
     $("#verifyAllConnections").onclick = validateConnections;
     $("#importEconnyam").onclick = () => importEconnyamSettings(true);
     $("#openSettingsFromSidebar").onclick = () => setAppView("settings");
