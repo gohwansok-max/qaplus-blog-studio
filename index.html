@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#0b1f33">
   <meta name="application-name" content="QA PLUS Blog Studio">
-  <meta name="qa-plus-app-version" content="30">
+  <meta name="qa-plus-app-version" content="31">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="QA+ Studio">
@@ -267,7 +267,7 @@
         <span class="brand-mark">QA+</span>
         <span class="brand-copy"><strong>QA PLUS Blog Studio</strong><span>FOOD SAFETY CONTENT AUTOMATION</span></span>
       </a>
-      <span id="appVersion" class="app-version" aria-label="현재 앱 버전">APP v30</span>
+      <span id="appVersion" class="app-version" aria-label="현재 앱 버전">APP v31</span>
       <div class="studio-nav" role="tablist" aria-label="앱 화면">
         <button class="studio-tab active" type="button" data-app-view="make" role="tab" aria-selected="true">글 만들기</button>
         <button class="studio-tab" type="button" data-app-view="tools" role="tab" aria-selected="false">블로그 도구</button>
@@ -403,7 +403,7 @@
               <div class="rail">
                 <div class="railfill" id="railfill"></div>
                 <div class="rstep" id="st1" data-s="idle"><div class="rdot">1</div>
-                  <h3>영상 보고 대본 뽑기</h3><p><span id="m0lab">gemini-3.6-flash</span> 가 영상을 직접 보고 받아씁니다</p><div class="stat">대기</div></div>
+                  <h3>영상 보고 대본 뽑기</h3><p><span id="m0lab">gemini-3.7-flash</span> 가 영상을 직접 보고 받아씁니다</p><div class="stat">대기</div></div>
                 <div class="rstep" id="st2" data-s="idle"><div class="rdot">2</div>
                   <h3>취재하고 설계하기</h3><p><span id="m1lab">gpt-5.6-sol</span> 이 목차와 근거·표 계획을 짭니다</p><div class="stat">대기</div></div>
                 <div class="rstep" id="st3" data-s="idle"><div class="rdot">3</div>
@@ -671,7 +671,8 @@
               <div class="field">
                 <label for="gmModel">모델 <span class="saved" id="sv-gmModel">저장됨</span></label>
                 <select id="gmModel">
-                  <option value="gemini-3.6-flash">gemini-3.6-flash (권장)</option>
+                  <option value="gemini-3.7-flash">gemini-3.7-flash (권장)</option>
+                  <option value="gemini-3.6-flash">gemini-3.6-flash</option>
                   <option value="gemini-3-flash-preview">gemini-3-flash-preview</option>
                   <option value="gemini-3.5-flash">gemini-3.5-flash</option>
                   <option value="gemini-2.5-flash">gemini-2.5-flash</option>
@@ -881,7 +882,7 @@
    글쓰기: 칩섭(OpenAI 호환 chat/completions, 스트리밍)
    대본: 제미나이  ·  이미지: 칩섭/OpenAI  ·  보관: 워커 KV 또는 GitHub
    ========================================================== */
-    const APP_VERSION = "30";
+    const APP_VERSION = "31";
     const BLOG_URL = "https://qaplus-haccp.blogspot.com/";
     const YOUTUBE_CHANNEL = "https://youtube.com/@qaplus_haccp?si=2eoN3yuYCoDBpLru";
     const YOUTUBE_HANDLE = "@qaplus_haccp";
@@ -933,7 +934,7 @@
       m1: "gpt-5.6-sol",
       m2: "claude-opus-5",
       gmKey: BAKED_GEMINI,
-      gmModel: "gemini-3.6-flash",
+      gmModel: "gemini-3.7-flash",
       imgRoute: "auto",
       imgStyle: "photo",
       imgQuality: "medium",
@@ -1878,7 +1879,7 @@ ${IMG_NEGATIVE}
     }
 
     /* ---------- 제미나이: 영상 대본 추출 ---------- */
-    const GM_MODELS = ["gemini-3.6-flash","gemini-3-flash-preview","gemini-3.5-flash","gemini-2.5-flash"];
+    const GM_MODELS = ["gemini-3.7-flash","gemini-3.6-flash","gemini-3-flash-preview","gemini-3.5-flash","gemini-2.5-flash"];
     const GM_JOB_KEY = KEY + ".gemini-job";
     const GM_PROMPT = `이 유튜브 영상을 처음부터 끝까지 보고, 말한 내용을 한국어로 그대로 받아써 주세요.
 

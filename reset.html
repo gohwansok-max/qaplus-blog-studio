@@ -22,13 +22,13 @@
     <div class="mark">QA+</div>
     <h1>최신 버전으로 업데이트 중입니다</h1>
     <p id="status">이전 앱 캐시를 안전하게 정리하고 있습니다.</p>
-    <span id="version" class="version">APP v30</span>
+    <span id="version" class="version">APP v31</span>
     <a id="retry" href="./?appRefresh=retry">스튜디오 다시 열기</a>
   </main>
   <script>
     "use strict";
 
-    const FALLBACK_VERSION = "30";
+    const FALLBACK_VERSION = "31";
     const params = new URL(window.location.href).searchParams;
     const requestedVersion = params.get("version");
     const appVersion = /^\d+$/.test(requestedVersion || "") ? requestedVersion : FALLBACK_VERSION;

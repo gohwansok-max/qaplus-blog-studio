@@ -226,7 +226,7 @@ const JOB_MODELS = {
   gpt: ["gpt-5.6-sol","gpt-5.6-terra","gpt-5.6-luna","deepseek-v4-pro","glm-5.2","grok-4.5"],
   claude: ["claude-opus-5","claude-opus-4-8","claude-sonnet-5","claude-fable-5"]
 };
-const GEMINI_MODELS = ["gemini-3.6-flash","gemini-3-flash-preview","gemini-3.5-flash","gemini-2.5-flash"];
+const GEMINI_MODELS = ["gemini-3.7-flash","gemini-3.6-flash","gemini-3-flash-preview","gemini-3.5-flash","gemini-2.5-flash"];
 const JOB_RULES = `
 [QA PLUS 원칙 — 반드시 지킬 것]
 - 독자는 식품제조 현장의 품질·생산·위생 담당자입니다. 실무자가 오늘 바로 쓸 수 있게 씁니다.
@@ -320,7 +320,7 @@ function normalizeJobInput(raw) {
   const imgRoute = ["auto","cheapsub","openai-direct","openai-proxy"].includes(raw?.imgRoute) ? raw.imgRoute : "auto";
   const m1 = String(raw?.m1 || "gpt-5.6-sol");
   const m2 = String(raw?.m2 || "claude-opus-5");
-  const gmModel = String(raw?.gmModel || "gemini-3.6-flash");
+  const gmModel = String(raw?.gmModel || "gemini-3.7-flash");
   const imgModel = String(raw?.imgModel || "gpt-image-2");
   return {topic, script, videoUrl, videoId:getJobVideoId(videoUrl), category, targetChars, imgCount, sources, imgStyle, imgQuality, imgRoute, m1, m2, gmModel, imgModel};
 }
