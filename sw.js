@@ -2,7 +2,7 @@
 
 
 
-const CACHE_NAME = "qaplus-blog-studio-v32";
+const CACHE_NAME = "qaplus-blog-studio-v33";
 
 const APP_SHELL = [
   
